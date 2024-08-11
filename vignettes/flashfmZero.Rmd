@@ -1,0 +1,728 @@
+---
+title: "flashfmZero"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{flashfmZero}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+*flashfmZero* (flexible and shared information fine-mapping of uncorrelated quantitative traits) is an R package to simultaneously fine-map genetic associations for multiple (with zero correlation) quantitative traits. It extends on the multi-trait fine-mapping framework of [flashfm](https://www.nature.com/articles/s41467-021-26364-y).
+
+FlashfmZero is a computationally efficient approach to simultaneously fine-map signals in any number of uncorrelated quantitative traits (i.e. zero correlation), as may result from latent factors estimated from factor analysis using a varimax rotation. For correlated traits, the original flashfm multi-trait fine-mapping method should be used, which is also available in this package for convenience. Flashfm and flashfmZero output trait-specific results, leveraging information between traits; for each trait, credible sets, SNP marginal posterior probabilities of causality (MPP), and multi-SNP model posterior probabilities (PP) are output. 
+
+Any single-trait fine-mapping method that outputs model posterior probabilities may be integrated with flashfmZero and flashfm, and here we provide wrapper functions that integrate our expanded version of [JAM](https://onlinelibrary.wiley.com/doi/full/10.1002/gepi.21953). A wrapper function for flashfm with [FINEMAP](https://academic.oup.com/bioinformatics/article/32/10/1493/1743040), FLASHFMwithFINEMAP, is available here with examples in the [flashfm R package](https://jennasimit.github.io/flashfm/), where an overview of flashfm multi-trait fine-mapping is provided. 
+
+
+For more details, please see:
+
+F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2024). 
+Improved fine-mapping resolution of high-dimensional traits through multivariate analyses of latent factors. BioRxiv
+ 
+
+
+Available in this package are:
+
+1. [JAMdwithGroups](#example-of-jamdwithgroups): for single-trait fine-mapping using our JAMdynamic algorithm that adjusts the maximum number of causal variants, according to the data, so that out-of-sample reference panels, such as from the 1000 Genomes Project, may be used; output includes SNP groups that indicate distinct causal variants.
+
+2. [multiJAMd](#example-of-multijamd): for single-trait fine-mapping of multiple traits using our JAMdynamic algorithm and outputting SNP groups that indicate distinct causal variants. By running multiJAMd, a single set of SNP groups is produced allowing simple comparisons of group-level results between traits; running JAMdwithGroups on each trait will produce a set of SNP groups each time, where the group label names will not necessarily match. Any number of traits is accepted.
+
+3. [FLASHFMZEROwithJAMd](#example-of-flashfmzerowithjamd): flashfm multi-trait fine-mapping (zero correlated traits) with JAMdynamic; runs single and multi-trait fine-mapping and outputs both sets of results. Any number of uncorrelated traits is accepted.
+
+4. **FLASHFMwithJAMd**: flashfm multi-trait fine-mapping with JAMdynamic (as available in MGflashfm at https://jennasimit.github.io/MGflashfm/, where an example is provided); runs single and multi-trait fine-mapping and outputs both sets of results. The trait correlation needs to be provided as input, and allows up to six traits.
+
+5. All flashfm multi-trait fine-mapping functions (from https://jennasimit.github.io/flashfm/, https://jennasimit.github.io/MGflashfm/), allowing integration with any single-trait fine-mapping method that outputs multi-SNP model posterior probabilities.
+
+**Notes:** 
+
+1. SNP names must not contain ":" and must start with a non-numeric character, which are requirements of the original JAM algorithm.
+If SNP names are in the form "19:45301088_T_C" change to "chr19_45301088_T_C". 
+This could be done using the following command 
+```{r,eval=FALSE}
+paste0("chr", gsub(":", "_", snpnames)
+```
+2. The R2BGLiMS library is pre-installed in the flashfmZero R package, so no need to install it separately. However, a Java JDK must be installed in order to run R2BGLiMS.
+
+
+This vignette introduces **JAMdwithGroups**, **multiJAMd**, and **FLASHFMZEROwithJAMd** and gives illustrations of their use on example data of three uncorrelated latent factors based on the INTERVAL cohort, for a subset of the *SMIM1* region; this example data are provided in the flashfmZero R package. 
+
+
+Example data are described below, followed by illustrations.
+
+For an overview of the flashfm and MGflashfm R packages and further examples, see the [flashfm GitHub page](https://jennasimit.github.io/flashfm/) and [MGflashfm GitHub page](https://jennasimit.github.io/MGflashfm/)
+
+
+# Example Data
+
+This example data has been extracted from our analyses of the INTERVAL cohort. The INTERVAL cohort consists of healthy UK blood donors and the original GWAS data are described in [Astle et al. (2016)](https://doi.org/10.1016/j.cell.2016.10.042)
+and [Akbari et al. (2023)](https://doi.org/10.1038/s41467-023-40679-y).
+
+As data are not missing at random, we focus on 18,310 participants who have all 99 blood cell trait measured, and run a factor analysis with varimax rotation to estimate 25 latent factors (based on scree plot) that are uncorrelated (analysis scripts available at [Feng-github-link](https://github.com/fz-cambridge)). Upon running GWAS on these 25 latent factors and the 99 raw blood cell traits, we identified three latent factors and eight raw blood cell traits that have genome-wide signals in the gene *SMIM1*. All of these traits are related to red blood cells. 
+
+The 99% credible sets (CS99) based on raw traits range from 30 to 58 variants, whilst latent single-trait fine-mapping reduces the CS99 with sizes between 5 and 30, and flashfmZero multi-trait fine-mapping reduces each of the CS99 to the same single variant, rs1175550; rs1175550 is a high-confidence variant for red blood cell traits (e.g. HGB, RBC#, MCHC) in UK Biobank ([Vuckovik et al. 2020](https://doi.org/10.1016/j.cell.2020.08.008)), rs1175550 has also been shown to be transcriptionally active and modulates Vel blood group antigen expression ([Cvejic et al. 2013](https://doi.org/10.1038/ng.2603)).
+
+The original region contains 2,940 variants, and in our provided example we focus on 313 variants from the centre of this region.
+
+The data that are needed to run our fine-mapping functions are shown below, to indicate the required format.
+
+
+## SMIM1.gwas.list.interval.fa25
+```{r} 
+library(flashfmZero)
+lapply(SMIM1.gwas.list.interval.fa25,head)
+```
+## SMIM1.corX
+```{r} 
+#library(flashfmZero)
+SMIM1.corX[1:2,1:2]
+```
+## SMIM1.N
+```{r} 
+#library(flashfmZero)
+SMIM1.N
+```
+
+
+# Illustrations
+## Example of JAMdwithGroups
+```{r,eval=FALSE} 
+library(flashfmZero)
+save.path.tmp <- "tmpDIR"
+dir.create(save.path.tmp) 
+#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.
+#' 
+# use JAMdwithGroups function for one trait
+JAMdwithGroups.out.fa25.single <- JAMdwithGroups(gwas = SMIM1.gwas.list.interval.fa25[[1]], 
+                                                 N = SMIM1.N, 
+                                                 corX = SMIM1.corX, 
+                                                 cred = 0.99,
+                                                 save.path = save.path.tmp,
+                                                 jam.nM.iter = 5, 
+                                                 maxcv = 1, 
+                                                 maxcv_stop = 20, 
+                                                 min.mppi = 0.01,
+                                                 r2.minmerge = 0.8,
+                                                 extra.java.arguments = NULL) 
+``` 
+More specifically, the above arguments are:
+
+	- gwas: GWAS results for one single trait, i.e. a data.frame with the first 3 columns named: rsID, beta, EAF;
+	
+	- N: scalar that is the trait sample size;
+
+	- corX: SNP correlation matrix that must have snp names in row.names and col.names;
+	
+	- cred: probability for credible set, default is 0.99 for 99% credible sets;
+
+	- save.path: Path to save JAM output files, tmp files and could delete these later e.g. save.path=paste0(DIRout,"/tmpJAM/region1");
+
+	- jam.nM.iter: in millions, number of iterations to use in JAM, default is 1 (one million);
+
+	- maxcv: starting value for maximum number of causal variants;
+
+	- maxcv_stop: maximum value to consider for maximum number of causal variants (maxcv_stop >= maxcv);
+
+	- min.mppi: trim snp groups with total MPPI < min.mppi, default is 0.01;
+
+	- r2.minmerge: merge groups with minimum between-group r2 > r2.minmerge, default is 0.5;
+
+	- extra.java.arguments: default is NULL; A character string to be passed through to the java command line. E.g. to specify a different temporary directory by passing "-Djava.io.tmpdir=/Temp".
+
+Ouput can be viewed [here](#JAMdwithGroups-output).
+
+## Example of multiJAMd
+```{r,eval=FALSE} 
+library(flashfmZero)
+save.path.tmp <- "tmpDIR"
+dir.create(save.path.tmp) 
+#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.
+#' Set NCORES=no. of traits, if on hpc or Linux, otherwise set NCORES=1 (Mac or Windows local machines).
+#' 
+# JAM on multiple traits, also outputting SNP groups
+all.single.traits.results <- multiJAMd(gwas.list = SMIM1.gwas.list.interval.fa25,  
+                                       corX = SMIM1.corX, 
+                                       N = SMIM1.N, 
+                                       save.path = save.path.tmp,
+                                       maxcv = 1, 
+                                       maxcv_stop = 20, 
+                                       jam.nM.iter = 5, 
+                                       r2.minmerge = 0.8, 
+                                       minsnpmppi = 0.01,
+                                       NCORES = 1) 
+all.single.traits.CS99  <- multiJAMdCS(all.single.traits.results, cred = 0.99)
+``` 
+In addition to some of the arguments in JAMdwithGroups earlier, the different arguments are:
+
+	- gwas.list: List of M data.frames, where M is the number of traits; gwas.list[[i]] is a data.frame (one for each trait) with the first 3 columns named: rsID, beta, EAF; if trait names are provided for the M data.frames, these trait names are given in output.
+	
+	- N: scalar that is the trait sample size - same for all traits; if different sample sizes across traits, use flashfm to return single and multi-trait results;
+	
+	- NCORES: number of cores for parallel computing; recommend NCORES=M in hpc or Linux, but if on local Windows/Mac machines, use NCORES=1.
+	
+
+## Example of FLASHFMZEROwithJAMd
+```{r,eval=FALSE} 
+library(flashfmZero)
+save.path.tmp <- "tmpDIR"
+dir.create(save.path.tmp) 
+#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.
+#' Set NCORES=no. of traits, if on hpc or Linux, otherwise set NCORES=1 (Mac or Windows local machines).
+#' 
+# flashfm on multiple traits with zero correlation
+multi.trait.results <- FLASHFMZEROwithJAMd(gwas.list = SMIM1.gwas.list.interval.fa25, 
+                                           corX = SMIM1.corX, 
+                                           N = SMIM1.N, 
+                                           save.path=save.path.tmp, 
+                                           TOdds = 1,
+                                           cpp = 0.99, 
+                                           NCORES = 1, 
+                                           maxcv = 1, 
+                                           maxcv_stop = 20, 
+                                           jam.nM.iter = 5, 
+                                           r2.minmerge = 0.8, 
+                                           minsnpmppi = 0.01)
+multi.trait.results.CS99 <- allcredsetsPP(multi.trait.results$mpp.pp, cred=.99)
+``` 
+In addition to the arguments in JAMdwithGroups and multiJAMd earlier, the extra arguments are:
+
+	- TOdds: target odds of no sharing to sharing, default is 1.
+	
+	- cpp: cumulative posterior probability threshold for selecting top models, default is 0.99.
+
+Ouput can be viewed [here](#FLASHFMZEROwithJAMd-output).
+
+## Output
+
+## JAMdwithGroups output
+```{r}
+# > JAMdwithGroups.out.fa25.single$CS
+#                                       MPP                           snp                         group
+# chr1_bp3691528_rsidrs1175550  0.920955014  chr1_bp3691528_rsidrs1175550                             A
+# chr1_bp3687739_rsidrs1175552  0.029917755  chr1_bp3687739_rsidrs1175552                             A
+# chr1_bp3684954_rsidrs1181870  0.019770459  chr1_bp3684954_rsidrs1181870                             A
+# chr1_bp3691727_rsidrs1175549  0.015788612  chr1_bp3691727_rsidrs1175549                             A
+# chr1_bp3691434_rsidrs70940313 0.009034836 chr1_bp3691434_rsidrs70940313 chr1_bp3691434_rsidrs70940313
+```
+
+```{r}
+# > JAMdwithGroups.out.fa25.single$mpp.pp
+# $MPP
+#                                       MPP
+# chr1_bp3691528_rsidrs1175550  0.920955014
+# chr1_bp3687739_rsidrs1175552  0.029917755
+# chr1_bp3684954_rsidrs1181870  0.019770459
+# chr1_bp3691727_rsidrs1175549  0.015788612
+# chr1_bp3691434_rsidrs70940313 0.009034836
+# chr1_bp3694796_rsidrs1891934  0.004533324
+# 
+# $MPPg
+#                                       MPP
+# A                             0.986431839
+# chr1_bp3691434_rsidrs70940313 0.009034836
+# chr1_bp3694796_rsidrs1891934  0.004533324
+# 
+# $PP
+#                                        PP
+# chr1_bp3691528_rsidrs1175550  0.920955014
+# chr1_bp3687739_rsidrs1175552  0.029917755
+# chr1_bp3684954_rsidrs1181870  0.019770459
+# chr1_bp3691727_rsidrs1175549  0.015788612
+# chr1_bp3691434_rsidrs70940313 0.009034836
+# chr1_bp3694796_rsidrs1891934  0.004533324
+# 
+# $PPg
+#                                        PP
+# A                             0.986431839
+# chr1_bp3691434_rsidrs70940313 0.009034836
+# chr1_bp3694796_rsidrs1891934  0.004533324
+```
+
+```{r}
+# > JAMdwithGroups.out.fa25.single$snpGroups
+# $A
+# [1] "chr1_bp3691727_rsidrs1175549" "chr1_bp3691528_rsidrs1175550" "chr1_bp3687739_rsidrs1175552"
+# [4] "chr1_bp3684954_rsidrs1181870"
+```
+
+```{r}
+# > all.single.traits.results
+# $mpp.pp
+# $mpp.pp$MPP
+# $mpp.pp$MPP[[1]]
+#                                         MPP
+# chr1_bp3691528_rsidrs1175550   9.135832e-01
+# chr1_bp3687739_rsidrs1175552   2.967828e-02
+# chr1_bp3684954_rsidrs1181870   1.961221e-02
+# chr1_bp3691727_rsidrs1175549   1.566223e-02
+# chr1_bp3691434_rsidrs70940313  8.962516e-03
+# chr1_bp3694796_rsidrs1891934   4.497037e-03
+# chr1_bp3691240_rsidrs1184341   2.649970e-03
+# chr1_bp3693909_rsidrs1175546   1.601057e-03
+# chr1_bp3706816_rsidrs149570540 1.152007e-03
+# chr1_bp3697291_rsidrs2996428   7.076501e-04
+# chr1_bp3704041_rsidrs7527973   6.938047e-04
+# chr1_bp3718591_rsidrs113282222 5.881415e-04
+# chr1_bp3711689_rsidrs6667255   2.433844e-04
+# chr1_bp3718244_rsidrs12120684  1.988198e-04
+# chr1_bp3709487_rsidrs7513053   1.579134e-04
+# chr1_bp3719890_rsidrs6661554   1.182267e-05
+# 
+# $mpp.pp$MPP[[2]]
+#                                         MPP
+# chr1_bp3709487_rsidrs7513053   3.413734e-01
+# chr1_bp3691528_rsidrs1175550   1.904409e-01
+# chr1_bp3691434_rsidrs70940313  1.024995e-01
+# chr1_bp3719890_rsidrs6661554   7.527003e-02
+# chr1_bp3713746_rsidrs6424052   6.971481e-02
+# chr1_bp3711689_rsidrs6667255   6.817898e-02
+# chr1_bp3684954_rsidrs1181870   5.147635e-02
+# chr1_bp3691240_rsidrs1184341   3.999624e-02
+# chr1_bp3721609_rsidrs12127399  1.247632e-02
+# chr1_bp3687739_rsidrs1175552   1.139365e-02
+# chr1_bp3704041_rsidrs7527973   1.100342e-02
+# chr1_bp3709093_rsidrs61759306  4.312098e-03
+# chr1_bp3697291_rsidrs2996428   4.237263e-03
+# chr1_bp3723155_rsidrs12125237  4.166272e-03
+# chr1_bp3722486_rsidrs6424056   3.527337e-03
+# chr1_bp3722830_rsidrs12125964  2.412461e-03
+# chr1_bp3691727_rsidrs1175549   2.337911e-03
+# chr1_bp3694796_rsidrs1891934   1.761245e-03
+# chr1_bp3706816_rsidrs149570540 1.672484e-03
+# chr1_bp3693909_rsidrs1175546   1.165261e-03
+# chr1_bp3718244_rsidrs12120684  4.014782e-04
+# chr1_bp3718591_rsidrs113282222 1.727522e-04
+# chr1_bp3683690_rsidrs1181873   9.812805e-06
+# 
+# $mpp.pp$MPP[[3]]
+#                                         MPP
+# chr1_bp3691528_rsidrs1175550   0.4252065124
+# chr1_bp3691727_rsidrs1175549   0.2176701711
+# chr1_bp3694796_rsidrs1891934   0.0770320035
+# chr1_bp3693909_rsidrs1175546   0.0681866839
+# chr1_bp3684954_rsidrs1181870   0.0635163745
+# chr1_bp3697291_rsidrs2996428   0.0507882758
+# chr1_bp3691434_rsidrs70940313  0.0438767710
+# chr1_bp3691240_rsidrs1184341   0.0150490061
+# chr1_bp3687739_rsidrs1175552   0.0114188660
+# chr1_bp3693032_rsidrs1175548   0.0064066155
+# chr1_bp3693755_rsidrs1175547   0.0052522622
+# chr1_bp3699568_rsidrs2799185   0.0045480481
+# chr1_bp3704041_rsidrs7527973   0.0043959753
+# chr1_bp3711689_rsidrs6667255   0.0033721258
+# chr1_bp3713746_rsidrs6424052   0.0011248246
+# chr1_bp3721609_rsidrs12127399  0.0006968169
+# chr1_bp3719890_rsidrs6661554   0.0006059394
+# chr1_bp3709487_rsidrs7513053   0.0004917694
+# chr1_bp3706816_rsidrs149570540 0.0001940217
+# chr1_bp3709093_rsidrs61759306  0.0001669367
+# 
+# 
+# $mpp.pp$MPPg
+# $mpp.pp$MPPg[[1]]
+#                                         MPP
+# A                              0.9980610313
+# chr1_bp3706816_rsidrs149570540 0.0011520074
+# chr1_bp3718591_rsidrs113282222 0.0005881415
+# chr1_bp3718244_rsidrs12120684  0.0001988198
+# 
+# $mpp.pp$MPPg[[2]]
+#                                         MPP
+# A                              9.833253e-01
+# chr1_bp3709093_rsidrs61759306  4.312098e-03
+# chr1_bp3723155_rsidrs12125237  4.166272e-03
+# chr1_bp3722486_rsidrs6424056   3.527337e-03
+# chr1_bp3722830_rsidrs12125964  2.412461e-03
+# chr1_bp3706816_rsidrs149570540 1.672484e-03
+# chr1_bp3718244_rsidrs12120684  4.014782e-04
+# chr1_bp3718591_rsidrs113282222 1.727522e-04
+# chr1_bp3683690_rsidrs1181873   9.812805e-06
+# 
+# $mpp.pp$MPPg[[3]]
+#                                         MPP
+# A                              0.9834321157
+# chr1_bp3693032_rsidrs1175548   0.0064066155
+# chr1_bp3693755_rsidrs1175547   0.0052522622
+# chr1_bp3699568_rsidrs2799185   0.0045480481
+# chr1_bp3706816_rsidrs149570540 0.0001940217
+# chr1_bp3709093_rsidrs61759306  0.0001669367
+# 
+# 
+# $mpp.pp$PP
+# $mpp.pp$PP[[1]]
+#                                          PP
+# chr1_bp3691528_rsidrs1175550   9.135832e-01
+# chr1_bp3684954_rsidrs1181870   1.961221e-02
+# chr1_bp3687739_rsidrs1175552   2.967828e-02
+# chr1_bp3691727_rsidrs1175549   1.566223e-02
+# chr1_bp3691434_rsidrs70940313  8.962516e-03
+# chr1_bp3691240_rsidrs1184341   2.649970e-03
+# chr1_bp3694796_rsidrs1891934   4.497037e-03
+# chr1_bp3693909_rsidrs1175546   1.601057e-03
+# chr1_bp3697291_rsidrs2996428   7.076501e-04
+# chr1_bp3706816_rsidrs149570540 1.152007e-03
+# chr1_bp3719890_rsidrs6661554   1.182267e-05
+# chr1_bp3718244_rsidrs12120684  1.988198e-04
+# chr1_bp3718591_rsidrs113282222 5.881415e-04
+# chr1_bp3704041_rsidrs7527973   6.938047e-04
+# chr1_bp3711689_rsidrs6667255   2.433844e-04
+# chr1_bp3709487_rsidrs7513053   1.579134e-04
+# 
+# $mpp.pp$PP[[2]]
+#                                          PP
+# chr1_bp3709487_rsidrs7513053   3.413734e-01
+# chr1_bp3691528_rsidrs1175550   1.904409e-01
+# chr1_bp3691434_rsidrs70940313  1.024995e-01
+# chr1_bp3719890_rsidrs6661554   7.527003e-02
+# chr1_bp3713746_rsidrs6424052   6.971481e-02
+# chr1_bp3684954_rsidrs1181870   5.147635e-02
+# chr1_bp3687739_rsidrs1175552   1.139365e-02
+# chr1_bp3691240_rsidrs1184341   3.999624e-02
+# chr1_bp3704041_rsidrs7527973   1.100342e-02
+# chr1_bp3711689_rsidrs6667255   6.817898e-02
+# chr1_bp3721609_rsidrs12127399  1.247632e-02
+# chr1_bp3697291_rsidrs2996428   4.237263e-03
+# chr1_bp3709093_rsidrs61759306  4.312098e-03
+# chr1_bp3722830_rsidrs12125964  2.412461e-03
+# chr1_bp3723155_rsidrs12125237  4.166272e-03
+# chr1_bp3722486_rsidrs6424056   3.527337e-03
+# chr1_bp3691727_rsidrs1175549   2.337911e-03
+# chr1_bp3694796_rsidrs1891934   1.761245e-03
+# chr1_bp3693909_rsidrs1175546   1.165261e-03
+# chr1_bp3706816_rsidrs149570540 1.672484e-03
+# chr1_bp3683690_rsidrs1181873   9.812805e-06
+# chr1_bp3718244_rsidrs12120684  4.014782e-04
+# chr1_bp3718591_rsidrs113282222 1.727522e-04
+# 
+# $mpp.pp$PP[[3]]
+#                                          PP
+# chr1_bp3691528_rsidrs1175550   0.4252065124
+# chr1_bp3691727_rsidrs1175549   0.2176701711
+# chr1_bp3694796_rsidrs1891934   0.0770320035
+# chr1_bp3693909_rsidrs1175546   0.0681866839
+# chr1_bp3684954_rsidrs1181870   0.0635163745
+# chr1_bp3687739_rsidrs1175552   0.0114188660
+# chr1_bp3697291_rsidrs2996428   0.0507882758
+# chr1_bp3691434_rsidrs70940313  0.0438767710
+# chr1_bp3691240_rsidrs1184341   0.0150490061
+# chr1_bp3693755_rsidrs1175547   0.0052522622
+# chr1_bp3699568_rsidrs2799185   0.0045480481
+# chr1_bp3704041_rsidrs7527973   0.0043959753
+# chr1_bp3711689_rsidrs6667255   0.0033721258
+# chr1_bp3693032_rsidrs1175548   0.0064066155
+# chr1_bp3709487_rsidrs7513053   0.0004917694
+# chr1_bp3721609_rsidrs12127399  0.0006968169
+# chr1_bp3713746_rsidrs6424052   0.0011248246
+# chr1_bp3719890_rsidrs6661554   0.0006059394
+# chr1_bp3709093_rsidrs61759306  0.0001669367
+# chr1_bp3706816_rsidrs149570540 0.0001940217
+# 
+# 
+# $mpp.pp$PPg
+# $mpp.pp$PPg[[1]]
+#                                          PP
+# A                              0.9980610313
+# chr1_bp3706816_rsidrs149570540 0.0011520074
+# chr1_bp3718591_rsidrs113282222 0.0005881415
+# chr1_bp3718244_rsidrs12120684  0.0001988198
+# 
+# $mpp.pp$PPg[[2]]
+#                                          PP
+# A                              9.833253e-01
+# chr1_bp3709093_rsidrs61759306  4.312098e-03
+# chr1_bp3723155_rsidrs12125237  4.166272e-03
+# chr1_bp3722486_rsidrs6424056   3.527337e-03
+# chr1_bp3722830_rsidrs12125964  2.412461e-03
+# chr1_bp3706816_rsidrs149570540 1.672484e-03
+# chr1_bp3718244_rsidrs12120684  4.014782e-04
+# chr1_bp3718591_rsidrs113282222 1.727522e-04
+# chr1_bp3683690_rsidrs1181873   9.812805e-06
+# 
+# $mpp.pp$PPg[[3]]
+#                                          PP
+# A                              0.9834321157
+# chr1_bp3693032_rsidrs1175548   0.0064066155
+# chr1_bp3693755_rsidrs1175547   0.0052522622
+# chr1_bp3699568_rsidrs2799185   0.0045480481
+# chr1_bp3706816_rsidrs149570540 0.0001940217
+# chr1_bp3709093_rsidrs61759306  0.0001669367
+# 
+# 
+# 
+# $snpGroups
+# $snpGroups$A
+#  [1] "chr1_bp3687739_rsidrs1175552"  "chr1_bp3684954_rsidrs1181870"  "chr1_bp3691240_rsidrs1184341" 
+#  [4] "chr1_bp3691528_rsidrs1175550"  "chr1_bp3691434_rsidrs70940313" "chr1_bp3693909_rsidrs1175546" 
+#  [7] "chr1_bp3691727_rsidrs1175549"  "chr1_bp3694796_rsidrs1891934"  "chr1_bp3697291_rsidrs2996428" 
+# [10] "chr1_bp3709487_rsidrs7513053"  "chr1_bp3711689_rsidrs6667255"  "chr1_bp3704041_rsidrs7527973" 
+# [13] "chr1_bp3713746_rsidrs6424052"  "chr1_bp3719890_rsidrs6661554"  "chr1_bp3721609_rsidrs12127399"
+```
+
+
+```{r}
+# > all.single.traits.CS99
+# $fm
+# $fm[[1]]
+#                             SNP         MPP
+# 1  chr1_bp3691528_rsidrs1175550 0.913583164
+# 2  chr1_bp3687739_rsidrs1175552 0.029678276
+# 3  chr1_bp3684954_rsidrs1181870 0.019612205
+# 4  chr1_bp3691727_rsidrs1175549 0.015662231
+# 5 chr1_bp3691434_rsidrs70940313 0.008962516
+# 6  chr1_bp3694796_rsidrs1891934 0.004497037
+# 
+# $fm[[2]]
+#                              SNP         MPP
+# 1   chr1_bp3709487_rsidrs7513053 0.341373417
+# 2   chr1_bp3691528_rsidrs1175550 0.190440874
+# 3  chr1_bp3691434_rsidrs70940313 0.102499533
+# 4   chr1_bp3719890_rsidrs6661554 0.075270028
+# 5   chr1_bp3713746_rsidrs6424052 0.069714812
+# 6   chr1_bp3711689_rsidrs6667255 0.068178981
+# 7   chr1_bp3684954_rsidrs1181870 0.051476350
+# 8   chr1_bp3691240_rsidrs1184341 0.039996236
+# 9  chr1_bp3721609_rsidrs12127399 0.012476324
+# 10  chr1_bp3687739_rsidrs1175552 0.011393654
+# 11  chr1_bp3704041_rsidrs7527973 0.011003416
+# 12 chr1_bp3709093_rsidrs61759306 0.004312098
+# 13  chr1_bp3697291_rsidrs2996428 0.004237263
+# 14 chr1_bp3723155_rsidrs12125237 0.004166272
+# 15  chr1_bp3722486_rsidrs6424056 0.003527337
+# 
+# $fm[[3]]
+#                              SNP         MPP
+# 1   chr1_bp3691528_rsidrs1175550 0.425206512
+# 2   chr1_bp3691727_rsidrs1175549 0.217670171
+# 3   chr1_bp3694796_rsidrs1891934 0.077032003
+# 4   chr1_bp3693909_rsidrs1175546 0.068186684
+# 5   chr1_bp3684954_rsidrs1181870 0.063516374
+# 6   chr1_bp3697291_rsidrs2996428 0.050788276
+# 7  chr1_bp3691434_rsidrs70940313 0.043876771
+# 8   chr1_bp3691240_rsidrs1184341 0.015049006
+# 9   chr1_bp3687739_rsidrs1175552 0.011418866
+# 10  chr1_bp3693032_rsidrs1175548 0.006406616
+# 11  chr1_bp3693755_rsidrs1175547 0.005252262
+# 12  chr1_bp3699568_rsidrs2799185 0.004548048
+# 13  chr1_bp3704041_rsidrs7527973 0.004395975
+# 
+# 
+# $cred
+# [1] 0.99
+```
+
+## FLASHFMZEROwithJAMd output
+```{r}
+# > multi.trait.results
+# $mpp.pp
+# $mpp.pp$MPP
+# $mpp.pp$MPP[[1]]
+#                                      null           52
+# chr1_bp3691528_rsidrs1175550  0.920955014 9.965705e-01
+# chr1_bp3687739_rsidrs1175552  0.029917755 3.302034e-04
+# chr1_bp3684954_rsidrs1181870  0.019770459 1.348791e-03
+# chr1_bp3691727_rsidrs1175549  0.015788612 8.428648e-04
+# chr1_bp3691434_rsidrs70940313 0.009034836 8.091800e-04
+# chr1_bp3694796_rsidrs1891934  0.004533324 9.848764e-05
+# 
+# $mpp.pp$MPP[[2]]
+#                                      null           52
+# chr1_bp3709487_rsidrs7513053  0.344798439 1.623921e-03
+# chr1_bp3691528_rsidrs1175550  0.192351579 9.921420e-01
+# chr1_bp3691434_rsidrs70940313 0.103527918 2.316782e-03
+# chr1_bp3719890_rsidrs6661554  0.076025217 3.580613e-04
+# chr1_bp3713746_rsidrs6424052  0.070414265 3.316350e-04
+# chr1_bp3711689_rsidrs6667255  0.068863025 3.243290e-04
+# chr1_bp3684954_rsidrs1181870  0.051992816 2.095486e-03
+# chr1_bp3691240_rsidrs1184341  0.040397521 3.372677e-04
+# chr1_bp3721609_rsidrs12127399 0.012601500 5.935017e-05
+# chr1_bp3687739_rsidrs1175552  0.011507968 2.171567e-04
+# chr1_bp3704041_rsidrs7527973  0.011113814 6.415724e-05
+# chr1_bp3709093_rsidrs61759306 0.004355362 2.051275e-05
+# chr1_bp3697291_rsidrs2996428  0.004279776 7.271649e-05
+# chr1_bp3723155_rsidrs12125237 0.004208073 1.981906e-05
+# chr1_bp3722486_rsidrs6424056  0.003562727 1.677963e-05
+# 
+# $mpp.pp$MPP[[3]]
+#                                      null           52
+# chr1_bp3691528_rsidrs1175550  0.428054114 9.927908e-01
+# chr1_bp3691727_rsidrs1175549  0.219127905 1.769318e-03
+# chr1_bp3694796_rsidrs1891934  0.077547886 4.270479e-04
+# chr1_bp3693909_rsidrs1175546  0.068643329 3.070270e-04
+# chr1_bp3684954_rsidrs1181870  0.063941743 2.097379e-03
+# chr1_bp3697291_rsidrs2996428  0.051128404 2.786015e-04
+# chr1_bp3691434_rsidrs70940313 0.044170613 1.812382e-03
+# chr1_bp3691240_rsidrs1184341  0.015149789 2.073696e-04
+# chr1_bp3687739_rsidrs1175552  0.011495338 2.060872e-04
+# chr1_bp3693032_rsidrs1175548  0.006449521 2.884733e-05
+# chr1_bp3693755_rsidrs1175547  0.005287437 2.364957e-05
+# chr1_bp3699568_rsidrs2799185  0.004578506 2.047868e-05
+# chr1_bp3704041_rsidrs7527973  0.004425415 3.101323e-05
+# 
+# 
+# $mpp.pp$MPPg
+# $mpp.pp$MPPg[[1]]
+#   null        52
+# A    1 0.9965705
+# 
+# $mpp.pp$MPPg[[2]]
+#        null       52
+# A 0.9878738 0.992142
+# 
+# $mpp.pp$MPPg[[3]]
+#        null        52
+# A 0.9836845 0.9927908
+# 
+# 
+# $mpp.pp$PP
+# $mpp.pp$PP[[1]]
+#                                      null           52
+# chr1_bp3691528_rsidrs1175550  0.920955014 9.965705e-01
+# chr1_bp3687739_rsidrs1175552  0.029917755 3.302034e-04
+# chr1_bp3684954_rsidrs1181870  0.019770459 1.348791e-03
+# chr1_bp3691727_rsidrs1175549  0.015788612 8.428648e-04
+# chr1_bp3691434_rsidrs70940313 0.009034836 8.091800e-04
+# chr1_bp3694796_rsidrs1891934  0.004533324 9.848764e-05
+# 
+# $mpp.pp$PP[[2]]
+#                                      null           52
+# chr1_bp3709487_rsidrs7513053  0.344798439 1.623921e-03
+# chr1_bp3691528_rsidrs1175550  0.192351579 9.921420e-01
+# chr1_bp3691434_rsidrs70940313 0.103527918 2.316782e-03
+# chr1_bp3719890_rsidrs6661554  0.076025217 3.580613e-04
+# chr1_bp3713746_rsidrs6424052  0.070414265 3.316350e-04
+# chr1_bp3711689_rsidrs6667255  0.068863025 3.243290e-04
+# chr1_bp3684954_rsidrs1181870  0.051992816 2.095486e-03
+# chr1_bp3691240_rsidrs1184341  0.040397521 3.372677e-04
+# chr1_bp3721609_rsidrs12127399 0.012601500 5.935017e-05
+# chr1_bp3687739_rsidrs1175552  0.011507968 2.171567e-04
+# chr1_bp3704041_rsidrs7527973  0.011113814 6.415724e-05
+# chr1_bp3709093_rsidrs61759306 0.004355362 2.051275e-05
+# chr1_bp3697291_rsidrs2996428  0.004279776 7.271649e-05
+# chr1_bp3723155_rsidrs12125237 0.004208073 1.981906e-05
+# chr1_bp3722486_rsidrs6424056  0.003562727 1.677963e-05
+# 
+# $mpp.pp$PP[[3]]
+#                                      null           52
+# chr1_bp3691528_rsidrs1175550  0.428054114 9.927908e-01
+# chr1_bp3691727_rsidrs1175549  0.219127905 1.769318e-03
+# chr1_bp3694796_rsidrs1891934  0.077547886 4.270479e-04
+# chr1_bp3693909_rsidrs1175546  0.068643329 3.070270e-04
+# chr1_bp3684954_rsidrs1181870  0.063941743 2.097379e-03
+# chr1_bp3697291_rsidrs2996428  0.051128404 2.786015e-04
+# chr1_bp3691434_rsidrs70940313 0.044170613 1.812382e-03
+# chr1_bp3691240_rsidrs1184341  0.015149789 2.073696e-04
+# chr1_bp3687739_rsidrs1175552  0.011495338 2.060872e-04
+# chr1_bp3693032_rsidrs1175548  0.006449521 2.884733e-05
+# chr1_bp3693755_rsidrs1175547  0.005287437 2.364957e-05
+# chr1_bp3699568_rsidrs2799185  0.004578506 2.047868e-05
+# chr1_bp3704041_rsidrs7527973  0.004425415 3.101323e-05
+# 
+# 
+# $mpp.pp$PPg
+# $mpp.pp$PPg[[1]]
+#   null        52
+# A    1 0.9965705
+# 
+# $mpp.pp$PPg[[2]]
+#        null       52
+# A 0.9878738 0.992142
+# 
+# $mpp.pp$PPg[[3]]
+#        null        52
+# A 0.9836845 0.9927908
+# 
+# 
+# 
+# $snpGroups
+# $snpGroups$groups.fm
+# $snpGroups$groups.fm$A
+#  [1] "chr1_bp3687739_rsidrs1175552"  "chr1_bp3684954_rsidrs1181870"  "chr1_bp3691240_rsidrs1184341" 
+#  [4] "chr1_bp3691528_rsidrs1175550"  "chr1_bp3691434_rsidrs70940313" "chr1_bp3693909_rsidrs1175546" 
+#  [7] "chr1_bp3691727_rsidrs1175549"  "chr1_bp3694796_rsidrs1891934"  "chr1_bp3697291_rsidrs2996428" 
+# [10] "chr1_bp3709487_rsidrs7513053"  "chr1_bp3711689_rsidrs6667255"  "chr1_bp3704041_rsidrs7527973" 
+# [13] "chr1_bp3713746_rsidrs6424052"  "chr1_bp3719890_rsidrs6661554"  "chr1_bp3721609_rsidrs12127399"
+# 
+# 
+# $snpGroups$groups.flashfm
+# $snpGroups$groups.flashfm$A
+# [1] "chr1_bp3691528_rsidrs1175550"
+# 
+# 
+# $snpGroups$group.sizes
+#       A
+# null 15
+# 52    1
+```
+
+
+```{r}
+# > multi.trait.results.CS99
+# $fm
+# $fm[[1]]
+#                                                         SNP         MPP
+# chr1_bp3691528_rsidrs1175550   chr1_bp3691528_rsidrs1175550 0.920955014
+# chr1_bp3687739_rsidrs1175552   chr1_bp3687739_rsidrs1175552 0.029917755
+# chr1_bp3684954_rsidrs1181870   chr1_bp3684954_rsidrs1181870 0.019770459
+# chr1_bp3691727_rsidrs1175549   chr1_bp3691727_rsidrs1175549 0.015788612
+# chr1_bp3691434_rsidrs70940313 chr1_bp3691434_rsidrs70940313 0.009034836
+# 
+# $fm[[2]]
+#                                                         SNP         MPP
+# chr1_bp3709487_rsidrs7513053   chr1_bp3709487_rsidrs7513053 0.344798439
+# chr1_bp3691528_rsidrs1175550   chr1_bp3691528_rsidrs1175550 0.192351579
+# chr1_bp3691434_rsidrs70940313 chr1_bp3691434_rsidrs70940313 0.103527918
+# chr1_bp3719890_rsidrs6661554   chr1_bp3719890_rsidrs6661554 0.076025217
+# chr1_bp3713746_rsidrs6424052   chr1_bp3713746_rsidrs6424052 0.070414265
+# chr1_bp3711689_rsidrs6667255   chr1_bp3711689_rsidrs6667255 0.068863025
+# chr1_bp3684954_rsidrs1181870   chr1_bp3684954_rsidrs1181870 0.051992816
+# chr1_bp3691240_rsidrs1184341   chr1_bp3691240_rsidrs1184341 0.040397521
+# chr1_bp3721609_rsidrs12127399 chr1_bp3721609_rsidrs12127399 0.012601500
+# chr1_bp3687739_rsidrs1175552   chr1_bp3687739_rsidrs1175552 0.011507968
+# chr1_bp3704041_rsidrs7527973   chr1_bp3704041_rsidrs7527973 0.011113814
+# chr1_bp3709093_rsidrs61759306 chr1_bp3709093_rsidrs61759306 0.004355362
+# chr1_bp3697291_rsidrs2996428   chr1_bp3697291_rsidrs2996428 0.004279776
+# 
+# $fm[[3]]
+#                                                         SNP         MPP
+# chr1_bp3691528_rsidrs1175550   chr1_bp3691528_rsidrs1175550 0.428054114
+# chr1_bp3691727_rsidrs1175549   chr1_bp3691727_rsidrs1175549 0.219127905
+# chr1_bp3694796_rsidrs1891934   chr1_bp3694796_rsidrs1891934 0.077547886
+# chr1_bp3693909_rsidrs1175546   chr1_bp3693909_rsidrs1175546 0.068643329
+# chr1_bp3684954_rsidrs1181870   chr1_bp3684954_rsidrs1181870 0.063941743
+# chr1_bp3697291_rsidrs2996428   chr1_bp3697291_rsidrs2996428 0.051128404
+# chr1_bp3691434_rsidrs70940313 chr1_bp3691434_rsidrs70940313 0.044170613
+# chr1_bp3691240_rsidrs1184341   chr1_bp3691240_rsidrs1184341 0.015149789
+# chr1_bp3687739_rsidrs1175552   chr1_bp3687739_rsidrs1175552 0.011495338
+# chr1_bp3693032_rsidrs1175548   chr1_bp3693032_rsidrs1175548 0.006449521
+# chr1_bp3693755_rsidrs1175547   chr1_bp3693755_rsidrs1175547 0.005287437
+# 
+# 
+# $flashfm
+# $flashfm[[1]]
+#                            SNP       MPP
+# 1 chr1_bp3691528_rsidrs1175550 0.9965705
+# 
+# $flashfm[[2]]
+#                            SNP      MPP
+# 1 chr1_bp3691528_rsidrs1175550 0.992142
+# 
+# $flashfm[[3]]
+#                            SNP       MPP
+# 1 chr1_bp3691528_rsidrs1175550 0.9927908
+# 
+# 
+# $cred
+# [1] 0.99
+```
+
+
+
+

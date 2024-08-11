@@ -1,0 +1,75 @@
+Package: flashfmZero
+Title: Flexible and Shared Information Fine-mapping in R (with zero trait correlation and embedded R2BGLiMS)
+Version: 0.0.1
+Authors@R: c(person("Jenn", "Asimit", role=c("aut","cre"), email = "ja628@cam.ac.uk"),
+    person("Feng","Zhou", role=c("aut"), email="fengzhou.cambridge@gmail.com"),
+    person("Chris", "Wallace", role=c("ctb"), email = "cew54@cam.ac.uk"),
+    person("Paul", "Newcombe", role=c("ctb"), email = "paul.newcombe@mrc-bsu.cam.ac.uk"))
+Maintainer: Jenn Asimit <ja628@cam.ac.uk>
+Description: FlashfmZero is a computationally efficient approach to simultaneously 
+	     fine-map signals in any number of uncorrelated quantitative traits (i.e. zero correlation),
+	     as may result from latent traits estimated from factor analysis using
+	     a varimax rotation. For correlated traits, the original flashfm multi-trait fine-mapping method should be used, 
+	     which is available in this package for convenience. Flashfm and flashfmZero output trait-specific results,
+	     leveraging information between traits; for each trait, credible sets, SNP marginal posterior probabilities of causality (MPP),
+	     and multi-SNP model posterior probabilities (PP) are output.  
+Imports: jsonlite, gplots, rlist, gtools, Rcpp, Matrix, methods, parallel, lqmm, MASS, survival, graphics, grDevices, stats
+Suggests: roxygen2, testthat, devtools, knitr, rmarkdown
+LinkingTo: Rcpp, RcppArmadillo
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Collate: 
+    'AutocorrelationPlot.R'
+    'BetaBinomialParameters.R'
+    'Classes.R'
+    'ClassMethods.R'
+    'CredibleSet.R'
+    'FLASHFMwithFINEMAP.R'
+    'FMconfig.R'
+    'GUESSFMfn.R'
+    'HiddenFunctions.R'
+    'Hidden_WriteData.R'
+    'R2BGLiMS.R'
+    'JAM.R'
+    'JAMPred.R'
+    'JAMPred_ParallelBlockIndices.R'
+    'JAMPred_SplitIntoPositiveDefiniteBlocks.R'
+    'JAM_LogisticToLinearEffects.R'
+    'JAM_PointEstimates.R'
+    'JAM_PosteriorSampler.R'
+    'JAM_RankCheck.R'
+    'JAMupdate.R'
+    'ManhattanPlot.R'
+    'ModelSizeBayesFactors.R'
+    'Neffective.R'
+    'No-Cor-flashfm-v20240222_update.R'
+    'NormInvGamPosteriorSample.R'
+    'PrettyResultsTable.R'
+    'RcppExports.R'
+    'SMIM1.N.R'
+    'SMIM1.corX.R'
+    'SMIM1.gwas.list.interval.fa25.R'
+    'StrongestPairwiseCorrelation.R'
+    'TopModels.R'
+    'TracePlots.R'
+    'flashfm-updated-added20240713.R'
+    'flashfm.R'
+    'flashfmZero-package.R'
+    'group.multi.R'
+    'groups2update-added20240713.R'
+    'jamexpanded.corX.R'
+    'makegroups1trait_v20240222_update.R'
+    'prep.R'
+    'summarise.R'
+    'updated-flashfm-functions-added20240713.R'
+Depends: R (>= 2.10)
+NeedsCompilation: yes
+Packaged: 2023-11-08 23:36:21 UTC; jennifer
+Author: Jenn Asimit [aut, cre],
+  Feng Zhou [aut],
+  Chris Wallace [ctb],
+  Paul J Newcombe [ctb]
+VignetteBuilder: knitr

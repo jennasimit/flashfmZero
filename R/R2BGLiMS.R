@@ -1,0 +1,1073 @@
+#' @include HiddenFunctions.R
+NULL
+
+#' Calls BGLiMS - a Java package for fitting GLMs under Bayesian model selection. NOTE: The predictors to explore with model
+#' selection are specified via the model.space.priors argument - see examples. By Default a common, and unknown, prior SD
+#' is used for all predictors under model selection, which in turn is assigned an Inverse-Gamma hyper-prior.
+#' Fixed normal priors may be user specified for all predictor (and confounder) coefficients via the beta.priors argument.
+#' 
+#' 
+#' @import survival
+#' @import jsonlite
+#' @importFrom stats sd as.formula
+#' @export
+#' @title Call BGLiMS from R
+#' @name R2BGLiMS
+#' @param likelihood Type of model to fit. Current options are 
+#' "Logistic" (for binary data), 
+#' "CLogLog" complementary log-log link for binary data, 
+#' "Weibull" (for survival data), 
+#' "Linear" (for linear regression), 
+#' "LinearConj" (linear regression exploiting conjugate results), 
+#' "JAM" (for conjugate linear regression using summary statistics, integrating out parameters) 
+#' and "JAM_MCMC" (for linear regression using summary statistics, with full MCMC of all parameters).
+#' @param data Matrix or dataframe containing the data to analyse. 
+#' Rows are indiviuals, and columns contain the variables and outcome.
+#' If modelling summary statistics specify X.ref, marginal.betas, and n instead (see below).
+#' @param outcome.var Name of outcome variable in data. For survival data see times.var below.
+#' If modelling summary statistics with JAM this can be left null but you must specify X.ref, marginal.beats and n instead (see below).
+#' @param times.var SURVIVAL DATA ONLY Name of column in data which contains the event times.
+#' @param confounders Optional vector of confounders to fix in the model at all times, i.e. exclude from model selection.
+#' @param model.selection Whether to use model selection (default is TRUE). NB: Even if set to FALSE, please provide a 
+#' dummy model.space.priors argument (see below). This will not be used mathematically, but the package requires taking the list of variable
+#' names from the "Variables" element therein.
+#' @param model.space.priors Must be specified if model.selection is set to TRUE.
+#' Two options are available. 1) A fixed prior is placed on the proportion of causal 
+#' covariates, and all models with the same number of covariates is equally likely. This
+#' is effectively a Poisson prior over the different possible model sizes. A list must
+#' be supplied for `model.space.priors` with an element "Rate", specifying the prior 
+#' proportion of causal covariates, and an element "Variables" containing the list of covariates
+#' included in the model search. 2) The prior proportion of causal covariates
+#' is treated as unknown and given a Beta(a, b) hyper-prior, in which case 
+#' elements "a" and "b" must be included in the `model.space.priors` list rather
+#' than "Rate". Higher values of "b" relative to "a" will encourage sparsity.
+#' NOTE: It is easy to specify different model space priors for different collections of
+#' covariates by providing a list of lists, each element of which is itself a model.space.prior
+#' list asm described above for a particular subset of the covariates.
+#' @param beta.priors This allows specifying fixed (potentially informative) priors for the covariate 
+#' effect priors. A matrix must be passed, with named rows corresponding to parameters, and columns 
+#' corresponding to the prior mean and variance in that order. When using this option priors must 
+#' be specified for either just the confounders, which are otherwise given fixed N(0,1e6) priors, 
+#' or for all covariates.
+#' @param beta.prior.partitions  Covariate effects under variable selection are ascribed, by default, 
+#' a common Normal prior, the standard deviation of which is treated as unknown, 
+#' with a Unif(0.05,2) hyper-prior. This option can be used to partition the covariate effects 
+#' into different prior groups, each with a seperate hierarchical normal prior. beta.prior.partitions 
+#' must be a list with as many elements as desired covariate groups. The element for a particular group 
+#' must in turn be a list containing the following named elements: "Variables" - a list of covariates 
+#' in the prior group, and "UniformA" and "UniformB" the Uniform hyper parameters for the standard 
+#' deviation of the normal prior across their effects.
+#' @param standardise.covariates Standardise covariates prior to RJMCMC such 
+#' that they have a common (unit) standard deviation and mean zero. 
+#' This is particularly recommended when covariates have substantially different variances, 
+#' to improve the likelihood of exchangeable effect estimates, an asssumption that
+#' is required under the (default) common effect prior with unknown variance used in the RJMCMC. 
+#' The standardisation is done invisibly to the user; parameter estimates 
+#' are re-scaled back to unit increases on the original scale before 
+#' producing posterior summaries. This is currently available for Logistic, Linear
+#' and Weibull regression. Default is TRUE.  Note that when this option is used, covariate effects are 
+#' re-scaled in the summary results table contained in the R2BGLiMS results object, such that they 
+#' are still interpretable as effects corresponding to unit changes on the original covariate scale.
+#' @param empirical.intercept.prior.mean.and.initial.value Empirically set the intercept 
+#' inital value and prior mean according to the mean outcome value, i.e. the 
+#' expected intercept value when covariates are mean-centred. In some settings this can markedly 
+#' improve mixing but EXPERIMENTATION is encouraged since in other settings it can do more harm
+#' than good. For Weibull regression this option leads 
+#' to both the intercept AND the scale parameter having their prior means and initial values set 
+#' according to a simple NULL Weibull model fit using the survreg function. In our experience this 
+#' always improved mixing under Weibull regression, so is enabled by default, but can be over-ridden
+#' by setting this option to FALSE. For logistic regression, setting this option to TRUE leads to
+#' the intercept prior mean and initial value being set to the logit(case fraction), and for linear regression 
+#' to the mean outcome. For linear and logistic regression the usefulness of this option is less clear,
+#' so it is off by default.
+#' @param g.prior Whether to use a g-prior for the beta's, i.e. a multivariate normal 
+#' with correlation structure proportional to sigma^2*X'X^-1, which is thought to aid
+#' variable selection in the presence of strong correlation. By default this is enabled.
+#' @param tau Value to use for sparsity parameter tau (under the tau*sigma^2 parameterisation).
+#' When using the g-prior, a recommended default is max(n, P^2) where n is the number of individuals, and P is the number of predictors. 
+#' @param xtx.ridge.term Value to add to the constant of the diagonal of X'X before JAM takes the Cholesky decomposition.
+#' @param enumerate.up.to.dim Whether to make posterior inference by exhaustively calculating
+#' the posterior support for every possible model up to this dimension. Leaving at 0 to disable
+#' and use RJMCMC instead. The current maximum allowed value is 5.
+#' @param X.ref Reference genotype matrix used by JAM to impute the SNP-SNP correlations. If multiple regions are to be 
+#' analysed this should be a list containing reference genotype matrices for each region. Individual's genotype
+#' must be coded as a numeric risk allele count 0/1/2. Non-integer values reflecting imputation may be given.
+#' NB: The risk allele coding MUST correspond to that used in marginal.betas. These matrices must each be positive definite and
+#' the column names must correspond to the names of the marginal.betas vector.
+#' @param cor.ref Alternatively to a reference genotype matrix, a reference correlation matrix AND mafs may be supplied to JAM.
+#' NB: The risk allele coding MUST correspond to that used in marginal.betas. These matrices must each be positive definite and
+#' the column and row names must correspond to the names of the marginal.betas vector.
+#' @param mafs.ref Alternatively to a reference genotype matrix, a reference correlation matrix AND mafs may be supplied to JAM.
+#' NB: The risk allele coding MUST correspond to that used in marginal.betas. This must be a named vector with names correspond 
+#' to the names of the marginal.betas vector.
+#' @param ns.each.ethnicity For mJAM: A vector of the sizes of each ethnicity dataset in which the summary statistics were calculated.
+#' @param marginal.betas Vector of (named) marginal effect estimates to re-analyse with JAM under multivariate models. 
+#' For multi-ethnic "mJAM" please provide a list of vectors, each element of which is a vector of marginal effects
+#' for a specific ethnicity over the same variants.
+#' @param n The size of the dataset in which the summary statistics (marginal.betas) were calculated
+#' @param n.iter Number of iterations to run (default is 1e6)
+#' @param n.mil.iter Number of million iterations to run. Can optionally be used instead of n.iter for convenience, which it will overide if specified.
+#' @param thinning.interval Every nth iteration to store (i.e. for the Java algorithm to write to a file and then read into R). By default this is the
+#' number of iterations divided by 1e4 (so for 1 million iterations every 100th is stored.) Higher values (so smaller posterior sample) can lead to 
+#' faster runtimes for large numbers of covariates.
+#' @param seed Which random number seed to use in the RJMCMC sampler. If none is provided, a random seed is picked between 1 and 2^16.
+#' @param extra.arguments A named list of additional arguments for which there are not currently dedicated options for. This can be used to 
+#' modify various "under the hood" settings, including all prior hyper-parameters, MCMC mixing parameters such as the probabilities of 
+#' add/delete/swap moves as well as the adaption settings. A list of all settings available for modification can be seen by typing 
+#' "data(DefaultArguments)" and then "default.arguments", which lists their names and default values.
+#' @param initial.model  An initial model for the covariates under selection can be specified as a vector of 0s and 1s. 
+#' If left un-specified the null (empty) model is used.
+#' @param max.model.dim The maximum model dimension can be specified, therefore truncating the model space. We do not recommend using this option 
+#' but it might sometimes be useful for robust-ness checks. When left un-specified there is no restriction on the model size.
+#' @param save.path By default R2BGLiMS writes the posterior samples to a temporary file that is deleted after they have been read in to R. By 
+#' specifying a file path this can be kept, along with the temporary files used for the data and arguments, which can be useful sometimes for de-bugging.
+#' @param results.label When using the save.path option, this allows the user to specify a handle with which to name the files.
+#' @param burnin.fraction Initial fraction of the iterations to throw away, e.g. setting to 0 would mean no burn-in. The 
+#' default of 0.5 corresponds to the first half of iterations being discarded.
+#' @param logistic.likelihood.weights An optional vector of likelihood weights for logistic regression. These weights multiply the log-likeihood
+#' contribution of each individual. The order should match the order of rows in the data matrix.
+#' @param mrloss.w The relative weight of the MR log loss function for pleiotropy vs the log likelihood. Default 0.
+#' @param mrloss.function Choice of pleiotropic loss function from "steve", "variance" (default variance)
+#' @param mrloss.marginal.by Marginal associations between SNPs and outcome for the MR loss function model.
+#' @param mrloss.marginal.sy Standard errors of marginal associations between SNPs and outcome for the MR loss function model 
+#' (not required for mrloss.function "variance")
+#' @param mafs.if.independent If the SNPs are independent then a reference genotype matrix is not required.
+#' However, it is still necessary to provide SNP MAFs here as a named vector. Doing so will lead to X.ref being 
+#' ignored and the SNPs to be modelled as if they are independent. Note that this option does not work with 
+#' enumeration.
+#' @param extra.java.arguments A character string to be passed through to the java command line. E.g. to specify a
+#' different temporary directory by passing "-Djava.io.tmpdir=/Temp".
+#' @param debug Whether to output extra information (such as final adaption proposal SDs) which might help with debugging 
+#' (default is FALSE).
+#' @param trait.variance Check NULL values.
+#' 
+#' @return An R2BGLiMS_Results class object is returned. See the slot 'posterior.summary.table' for a posterior summary of all parameters. 
+#' See slot 'mcmc.output' for a matrix containing the raw MCMC output from the saved posterior samples (0 indicates a covariate is excluded 
+#' from the model in a particular sample. Some functions for summarising results are listed under "see also".
+#' 
+#' @seealso Summary results are stored in the slot posterior.summary.table. See \code{\link{ManhattanPlot}} for a visual 
+#' summary of covariate selection probabilities. For posterior model space summaries see \code{\link{TopModels}}. For 
+#' convergence checks see \code{\link{TracePlots}} and \code{\link{AutocorrelationPlot}}.
+#' 
+#' @author Paul Newcombe
+
+R2BGLiMS <- function(
+  likelihood=NULL,
+  data=NULL,
+  outcome.var=NULL,
+  times.var=NULL,
+  confounders=NULL,
+  model.selection=TRUE,
+  model.space.priors=NULL,
+  beta.priors=NULL,
+  beta.prior.partitions=NULL,
+  standardise.covariates=TRUE,
+  empirical.intercept.prior.mean.and.initial.value = NULL,
+  g.prior=TRUE,
+  tau=NULL,
+  xtx.ridge.term=0,
+  enumerate.up.to.dim=0,
+  X.ref=NULL,
+  cor.ref=NULL,
+  mafs.ref=NULL,
+  ns.each.ethnicity=NULL,
+  marginal.betas=NULL,
+  n=NULL,
+  n.iter=1e6,
+  n.mil.iter=NULL,
+  thinning.interval=NULL,
+  seed=NULL,
+  extra.arguments=NULL,
+  initial.model=NULL,
+  max.model.dim=-1,
+  save.path=NULL,
+  results.label=NULL,
+  burnin.fraction=0.5,
+  trait.variance = NULL,
+  logistic.likelihood.weights = NULL,
+  mrloss.w=0,
+  mrloss.function="variance",
+  mrloss.marginal.by=NULL,
+  mrloss.marginal.sy=NULL,
+  mafs.if.independent=NULL,
+  extra.java.arguments=NULL,
+  debug=FALSE
+) {
+  
+  ###########################
+  ### --- Old options --- ###
+  ###########################
+  alt.initial.values <- FALSE # Now done using the extra.arguments option
+  model.tau <- FALSE # Stochastic modelling of Tau. Too experimental to offer as an option for now.
+  
+  ##############################
+  ##############################
+  ### --- Error messages --- ###
+  ##############################
+  ##############################
+  
+  ### --- Number of iterations
+  if (!is.null(n.mil.iter)) {
+    n.iter <- n.mil.iter*1e6
+  }
+
+  ### --- N - sometimes n is taken as a function from another package.
+  if (!is.null(n)) {
+    if (!is.numeric(n)) stop("n is not numeric. Have you correctly specified n?")  
+  }
+  
+  ### --- Java installation error messages
+  try.java <- try(system("java -version"), silent=TRUE)
+  if (try.java!=0) stop("Java is not installed and is required to run BGLiMS.\nPlease install a Java JDK from java.com/download.")  
+  
+  ### --- Basic input checks
+  if (is.null(likelihood)) stop("No likelihood, i.e. the model type, has been specified; please specify as Logistic, CLogLog,
+                                Weibull, Linear, LinearConj, JAM_MCMC or JAM")
+  if (!is.null(likelihood)) {
+    if (!likelihood %in% c("Logistic", "CLogLog", "Weibull", "Linear", "LinearConj", "JAM_MCMC", "JAM")) {
+      stop("Likelihood must be specified as Logistic, CLogLog, Weibull, Linear, LinearConj, JAM_MCMC, or JAM")
+    }
+  }
+#  if (is.null(data)&is.null(X.ref)&is.null(mafs.if.independent)) stop("The data to analyse has not been specified")
+  if (is.null(outcome.var)&is.null(marginal.betas)) stop("An outcome variable has not been specified")
+  if (!is.null(logistic.likelihood.weights) & likelihood != "Logistic") stop("Likelihood weights can currently
+                                                                             only be supplied for logistic regression.")
+  
+  ### --- Likelihood specific checks
+  if (likelihood %in% c("Logistic", "CLogLog", "Weibull")) {
+    # This check is not done for Weibull, Cox or CaseCohort - since with uncensored data the outcome is not binary
+    if (is.factor(data[,outcome.var])) {
+      data[,outcome.var] <- as.integer(data[,outcome.var])-1
+    } else if (is.character(data[,outcome.var])) {
+      data[,outcome.var] <- as.integer(as.factor(data[,outcome.var]))-1    
+    }    
+    if (length(table(data[,outcome.var]))>2) {
+      stop("Outcome variable must be binary")
+    } else if ((likelihood != "Weibull") & (length(table(data[,outcome.var]))==1)) {
+      # Single class allowed for survival models (may all be survivors)
+      stop("Outcome variable only has one class")
+    }
+  }
+  if (likelihood %in% c("LinearConj", "JAM") & is.null(tau)) {
+    if (g.prior) {
+      if (likelihood %in% c("LinearConj")) {
+        if (debug) {
+          cat("tau was not provided. Since the g-prior is in use, setting to the recommended maximum of n and P^2\n")
+        }
+        tau <- max(nrow(data), ncol(data)^2)        
+      } else if (likelihood %in% c("JAM")) {
+        if (debug) {
+          cat("tau was not provided. Since the g-prior is in use, setting to the recommended maximum of n and P^2\n")
+        }
+        if (is.null(ns.each.ethnicity)) {
+          tau <- max(n,length(marginal.betas)^2)
+        } else {
+          if (!is.list(marginal.betas)) stop("marginal.betas must be a list for multi-ethnic mJAM")
+          tau <- max(sum(ns.each.ethnicity),length(marginal.betas[[1]])^2)
+        }
+      }
+    } else {
+      stop("Please choose a value for tau. Note that you have selected to use independent priors.
+           Did you mean to use the g-prior?")
+    }
+  }
+  ### --- Enumeration error messages
+  if (enumerate.up.to.dim>0) {
+    if (model.tau) stop ("Tau must be fixed to enumerate model specific posterior
+                         scores.")
+    if ((enumerate.up.to.dim>5)) stop ("Currenly only possible to enumerate models
+                                     up to dimension 5") # If change edit help above    
+  }  
+    
+  ### --- Model space prior error messages
+  if (is.null(model.space.priors)) stop("Must specify a prior over the model space.")
+  if (!is.null(model.space.priors)) {
+    if (!is.list(model.space.priors)) stop("model.space.priors must be a list, or list of list(s).")
+    if (!is.list(model.space.priors[[1]])) {
+      # Convert to list of lists if only a single model space component is provided
+      model.space.priors <- list(model.space.priors)
+    }
+    # Check structure
+    for (c in 1:length(model.space.priors)) {
+      no.prior.family <- TRUE
+      if ("a"%in%names(model.space.priors[[c]])&"b"%in%names(model.space.priors[[c]])) {
+        no.prior.family <- FALSE
+        model.space.priors[[c]]$Family <- "Poisson"
+      }
+      if ("Rate"%in%names(model.space.priors[[c]])) {
+        no.prior.family <- FALSE        
+        model.space.priors[[c]]$Family <- "BetaBinomial"
+      }
+      if (no.prior.family) {
+        stop("Each model.space.prior list(s) must contain either named a and b elements to sepecify a beta-binomial prior, or a named Rate element to specify a Poisson prior")
+      }
+      if (!"Variables"%in%names(model.space.priors[[c]])) {
+        stop("Each model.space.prior list(s) must contain an element named Variables, defining which covariates to search over")
+      }
+      if (!likelihood %in% c("JAM_MCMC", "JAM")) {
+        if (sum(model.space.priors[[c]]$Variables%in%colnames(data))!=length(model.space.priors[[c]]$Variables)) {
+          stop(paste("Not all variables in model space component",c,"are present in the data"))
+        }
+        # Sort out any factors - MOVE TO DATA FORMATTING?
+        for (v in model.space.priors[[c]]$Variables) {
+          if (is.factor(data[,v])) {
+            data[,v] <- as.integer(data[,v])
+          } else if (is.character(data[,v])) {
+            data[,v] <- as.integer(as.factor(data[,v]))-1
+          }
+        }        
+      }
+    }
+    # Check partitions are dichotomous
+    if (length(unique(unlist(lapply(model.space.priors, function(x) x$Variables))))
+        != sum(unlist(lapply(model.space.priors, function(x) length(x$Variables))))) {
+      stop("There is overlap in the covariates between some of the model space prior partitions")
+    }
+    # Check confounders do not appear
+    if ( sum(unique(unlist(lapply(model.space.priors, function(x) x$Variables))) %in% confounders) > 0) {
+      stop("Some of the confounders also appear in the model space prior.")
+    }
+  }
+  
+  ### --- Confounders error messages
+  if (!is.null(confounders)) {
+    if (sum(confounders%in%colnames(data))!=length(confounders)) stop("One or more confounders are not present in the data")
+    for (v in confounders) {
+      if (is.factor(data[,v])) {
+        data[,v] <- as.integer(data[,v])
+      } else if (is.character(data[,v])) {
+        data[,v] <- as.integer(as.factor(data[,v]))        
+      }
+    }
+  }
+  
+  ### -- Beta prior error messages
+  if (!is.null(beta.priors)) {
+    if (likelihood %in% c("LinearConj", "JAM")) {stop("Fixed priors for the coefficients can not be specified for the conjugate model; the prior
+                                                 is take as a function of X'X")}
+    beta.priors.not.mat <- TRUE
+    if (is.data.frame(beta.priors)) {beta.priors.not.mat <- FALSE}
+    if (is.matrix(beta.priors)) {beta.priors.not.mat <- FALSE}
+    if (beta.priors.not.mat) stop("beta.priors must be a matrix or data frame")
+    if (ncol(beta.priors)!=2) stop("beta.priors must have two columns - 1st for means, 2nd for SDs")
+    if ( is.null(rownames(beta.priors)) ) stop("Rows of beta.priors must be named with corresponding variable names")
+    if (!likelihood %in% c("JAM_MCMC", "JAM")) {
+      if (sum(rownames(beta.priors)%in%colnames(data))!=nrow(beta.priors)) stop("One or more variables in beta.priors are not present in the data")
+    }
+  } else if (length(confounders)>0) {
+    if (!likelihood %in% c("LinearConj")) { # Confounders are not modelled for LinearConj
+      #warning("beta.priors were not provided for the confounders (which should not be
+      #      treated as exchangeable with covariates under model selection). Setting to N(0,1e6).")
+      beta.priors <- data.frame(
+        cbind(rep(0,length(confounders)),rep(1000,length(confounders))),
+        row.names=confounders)
+    }
+  }
+  
+  ### --- Beta prior partition error messages
+  if (!is.null(beta.prior.partitions)) {
+    if (likelihood %in% c("LinearConj", "JAM")) {
+      stop("the beta.prior.partitions option is not available for the conjugate models.")
+    }
+    if (!is.list(beta.prior.partitions)) {beta.prior.partitions <- list(beta.prior.partitions)}
+    if (!is.list(beta.prior.partitions[[1]])) stop("beta.prior.partitions must be a list or list of list(s).")
+    # Check structure
+    for (c in 1:length(beta.prior.partitions)) {
+      # Check Hyper-prior structure
+      no.hyperprior.parameters <- TRUE
+      if ("UniformA"%in%names(beta.prior.partitions[[c]]) & "UniformB"%in%names(beta.prior.partitions[[c]])) {
+        no.hyperprior.parameters <- FALSE
+        beta.prior.partitions[[c]]$Family <- "Uniform"
+        if (!"Init" %in% names(beta.prior.partitions[[c]])) { # Take as mean of Uniform limits
+          beta.prior.partitions[[c]]$Init <- mean(c(beta.prior.partitions[[c]]$UniformA, beta.prior.partitions[[c]]$UniformB))
+        } else {
+          if (beta.prior.partitions[[c]]$Init<beta.prior.partitions[[c]]$UniformA | beta.prior.partitions[[c]]$Init>beta.prior.partitions[[c]]$UniformB) {
+            stop(paste("Initial SD for covariate prior partition",c,"is outside the Uniform range."))
+          }
+        }
+      }
+      if ("GammaA"%in%names(beta.prior.partitions[[c]]) &"GammaB"%in%names(beta.prior.partitions[[c]])) {
+        no.hyperprior.parameters <- FALSE
+        beta.prior.partitions[[c]]$Family <- "Gamma"
+        if (!"Init" %in% names(beta.prior.partitions[[c]])) {
+          beta.prior.partitions[[c]]$Init <- 0.1
+        }
+      }
+      if (no.hyperprior.parameters) stop(paste("Hyper-parameters UniformA/UniformB or GammaA/GammaB not found for covariate prior partition",c))
+      # Check Variables
+      if (!"Variables"%in%names(beta.prior.partitions[[c]])) {
+        stop(paste("Each covariate prior partition must contain an element named Variables defining the covariates in the partition.
+             Not supplied for partition",c) )
+      }
+      if (!likelihood %in% c("JAM_MCMC", "JAM")) {
+        if (sum(beta.prior.partitions[[c]]$Variables%in%colnames(data))!=length(beta.prior.partitions[[c]]$Variables)) {
+          stop(paste("Not all variables in covariate prior partition",c,"are present in the data"))
+        }
+      }
+      if (sum(beta.prior.partitions[[c]]$Variables%in%rownames(beta.priors))>0) {
+        stop(paste("Informative priors have also been specified for some of the variables in
+                   covariate prior partition",c))
+      }
+    }
+    # Check partitions are dichotomous
+    if (length(unique(unlist(lapply(beta.prior.partitions, function(x) x$Variables))))
+        != sum(unlist(lapply(beta.prior.partitions, function(x) length(x$Variables))))) {
+      stop("There is overlap in the covariates between some of the prior partitions")
+    }
+    # Check confounders do not appear
+    if ( sum(unique(unlist(lapply(beta.prior.partitions, function(x) x$Variables))) %in% confounders) > 0) {
+      stop("Some of the confounders also appear in the covariate prior partitions. These should not be treated
+           as exchangeable with covariates under model selection.")
+    }
+  } else {
+    if (!likelihood %in% c("LinearConj", "JAM")) {
+      all.covariates <- unique(c(unlist(lapply(model.space.priors,function(x) x$Variables)),rownames(beta.priors),confounders))
+      # Create default single beta.prior.partitions with Uniform(0.05, 2) - SMMR
+      if (is.null(beta.priors)) {
+        beta.prior.partitions=list(list("UniformA"=0.05, "UniformB"=2, "Variables"=all.covariates, "Family"="Uniform", "Init"=1))
+      } else if (nrow(beta.priors)!=length(all.covariates)) {
+        beta.prior.partitions=list(list("UniformA"=0.05, "UniformB"=2,"Variables"=all.covariates[!all.covariates%in%rownames(beta.priors)], "Family"="Uniform", "Init"=1))
+      }
+    }
+  }
+  
+  ### --- JAM specific error messages
+  if (!is.null(X.ref) | !is.null(cor.ref)) {
+    
+    # --- X.ref error messages
+    if (!is.null(X.ref)) {
+      if (is.data.frame(X.ref)) {
+        X.ref <- matrix(X.ref) # convert to matrix
+      }
+      if (!is.list(X.ref)) {
+        X.ref <- list(X.ref) # convert to list if there is a single block
+      }
+      if (sum(unlist(lapply(X.ref, function(x) !is.numeric(x) )))>0) {stop("Reference genotype matrices must be numeric, coded as risk allele countsin the 0 to 2 range")}
+      if (max(unlist(X.ref))>2 | min(unlist(X.ref)) < 0) {stop("Reference genotype matrices must be coded coded as risk allele counts in the 0 to 2 range")}
+      if (!is.null(ns.each.ethnicity)) {
+        # mJAM error catches
+      } else {
+        if (sum(names(marginal.betas) %in% unlist(lapply(X.ref, colnames))) < length(marginal.betas)) {stop("Reference genotype matrices do not include all SNPs in the marginal.betas vector")}
+      }
+    }
+
+    # --- cor.ref error messages
+    if (!is.null(cor.ref)) {
+      if (is.null(mafs.ref)) {stop("Reference MAFs must also be supplied when supplying JAM a reference correlation matrix")}
+      if (is.data.frame(cor.ref)) {
+        cor.ref <- matrix(cor.ref) # convert to matrix
+      }
+      if (!is.list(cor.ref)) {
+        cor.ref <- list(cor.ref) # convert to list if there is a single block
+      }
+      if (sum(unlist(lapply(cor.ref, function(x) !is.numeric(x) )))>0) {stop("Reference correlation matrices must be numeric")}
+      if (!is.null(ns.each.ethnicity)) {
+        # mJAM error catches
+      } else {
+        if (sum(names(marginal.betas) %in% unlist(lapply(cor.ref, colnames))) < length(marginal.betas)) {stop("Reference correlation matrices do not include all SNPs in the marginal.betas vector")}
+      }
+    }
+    
+    # --- Other JAM input
+    if (is.null(marginal.betas)) { stop("For analysis with JAM you must provide a vector of marginal summary statistics") }
+    if (is.null(n)) { stop("You must specificy the number of individuals the marginal effect estimates were calculated in.") }
+  }
+  
+  ##########################
+  ##########################
+  ### --- File setup --- ###
+  ##########################
+  ##########################
+  
+  if (is.null(seed)) {seed <- sample.int(2^16, size = 1)}
+  now <-format(Sys.time(), "%b%d%H%M%S") # Used to ensure unique names in the temp directory
+  if (is.null(save.path)) {
+    clean.up.bglims.files <- TRUE
+    arguments.file <- paste(tempfile(),now,"Arguments.txt",sep="_")
+    data.file <- paste(tempfile(),now,"Data.txt",sep="_")
+    results.file <- paste(tempfile(),now,"Results.txt",sep="_")
+  } else {
+    clean.up.bglims.files <- FALSE
+    if (is.null(results.label)) {results.label <- now}
+    arguments.file <- file.path(save.path,paste(results.label,"Arguments.txt",sep="_"))
+    data.file <- file.path(save.path,paste(results.label,"Data.txt",sep="_"))
+    results.file <- file.path(save.path,paste(results.label,"Results.txt",sep="_"))
+  }
+  
+  # Setup file paths/sytem command information
+  #pack.root <- path.package("R2BGLiMS")
+  pack.root <- path.package("flashfmZero")
+  bayesglm.jar <- file.path(pack.root, "BGLiMS", "BGLiMS.jar")
+  
+  ###########################
+  ###########################
+  ### --- Prior setup --- ###
+  ###########################
+  ###########################
+  
+  # Deal with confounders for conjugate model
+  if (!is.null(confounders)&(likelihood=="LinearConj")) {
+    data <- .ConfounderAdjustedResiduals(data, outcome.var, confounders)
+    confounders <- NULL
+  }
+    
+  # Establish model space prior component sizes
+  n.mod.space.comps <- length(model.space.priors)
+  mod.space.comp.sizes <- NULL
+  if (model.selection) {
+    for (c in 1:n.mod.space.comps) {
+      mod.space.comp.sizes <- c(mod.space.comp.sizes, length(model.space.priors[[c]]$Variables))      
+    }
+  }
+  # Establish model space prior distribution family
+  if ("Rate" %in% names(model.space.priors[[1]]) ){
+    modSpaceDistribution <- 0    # Poisson
+  } else {
+    modSpaceDistribution <- 1    # Beta-binomial
+  }
+  # Predictors to keep in the model at all times go at the front
+  predictors <- confounders
+  for (i in 1:n.mod.space.comps) {
+    predictors <- c(predictors, model.space.priors[[i]][["Variables"]])
+  }
+  if (!is.null(beta.priors)) {
+    # Establish whether just for confounders or for all predictors
+    # Check order of rows
+    beta.priors <- as.data.frame(beta.priors)
+    if (nrow(beta.priors)==length(confounders)) {
+      # Fixed priors have been provided for confounders only.
+      beta.priors <- beta.priors[confounders,] # Ensure order is correct
+    } else if (nrow(beta.priors)==length(predictors)) {
+      # Fixed priors have been provided for everything turn beta.sd.prior off
+      beta.priors <- beta.priors[predictors,] # Ensure order is correct
+    } else {
+      stop("Currently informative priors can only be supplied (using beta.priors) for either all confounders or everything.")
+    }
+  } else if (!is.null(confounders)) {
+    # If confoudners have been specified but no beta.priors, create - 
+    # must have fixed priors for confounders
+    beta.priors <- data.frame(
+      cbind(rep(0,length(confounders)),rep(1000,length(confounders))),
+      row.names=confounders)    
+  }
+  
+  ###################################
+  ###################################
+  ### --- Data Pre-Processing --- ###
+  ###################################
+  ###################################
+  
+  # --- Mean value imputation centering and standardisation
+  if (likelihood %in% c("Logistic", "Weibull", "Linear", "LinearConj") ) {
+    
+    # --- Mean value imputation
+    need.mean.value.imputation <- FALSE
+    for (v in predictors) {
+      if (sum(is.na(data[,v]))>0) { 
+        need.mean.value.imputation <- TRUE
+        data[is.na(data[,v]),v] <- mean(data[,v], na.rm = T)
+      }
+    }
+    if (need.mean.value.imputation) {
+      cat("Warning: Mean value imputation was performed for 1 or more covariates\n")
+    }
+    
+    # --- Standardise covariates
+    if (standardise.covariates) {
+      sds.before.standardisation <- NULL
+      for (v in predictors) {
+        if (sd(data[,v], na.rm=T) > 0) {
+          sds.before.standardisation <- c(sds.before.standardisation,sd(data[,v], na.rm=T))
+          # Standardise
+          data[,v] <- data[,v]/sd(data[,v], na.rm=T) 
+          data[,v] <- data[,v] - mean(data[,v])
+        } else {
+          stop("Covariate ",v," has zero variance. Please remove from the analysis.")
+        }
+      }
+      names(sds.before.standardisation) <- predictors[!predictors %in% confounders]
+    }
+    
+    if (is.null(empirical.intercept.prior.mean.and.initial.value)) {
+      if (likelihood %in% c("Weibull") ) {
+        empirical.intercept.prior.mean.and.initial.value <- TRUE
+      } else {
+        empirical.intercept.prior.mean.and.initial.value <- FALSE
+      }
+    }
+    
+    # --- Empirical intercept prior mean
+    if (empirical.intercept.prior.mean.and.initial.value) {
+      if (!standardise.covariates) {
+        for (v in predictors) {
+          data[,v] <- data[,v] - mean(data[,v])
+        }
+      }
+      if (likelihood == "Logistic") {
+        logit.case.fraction <- log(mean(data[,outcome.var])/(1-mean(data[,outcome.var])))
+        if (debug) {
+          cat("Setting intercept prior mean and initial value to logit(case fraction)...\n")
+        }
+        if (is.null(extra.arguments)) {
+          extra.arguments=list(
+            "AlphaPriorMu"=logit.case.fraction,
+            "Alpha_Initial_Value"=logit.case.fraction
+          )          
+        } else if (!"AlphaPriorMu" %in% names(extra.arguments)) {
+          extra.arguments[["AlphaPriorMu"]] <- logit.case.fraction
+          extra.arguments[["Alpha_Initial_Value"]] <- logit.case.fraction
+        }
+      } else if (likelihood == "Linear") {
+        if (debug) {
+          cat("Setting intercept prior mean and initial value to outcome mean...\n")
+        }
+        if (is.null(extra.arguments)) {
+          extra.arguments=list(
+            "AlphaPriorMu"=mean(data[,outcome.var]),
+            "Alpha_Initial_Value"=mean(data[,outcome.var])
+          )          
+        } else if (!"AlphaPriorMu" %in% names(extra.arguments)) {
+          extra.arguments[["AlphaPriorMu"]] <- mean(data[,outcome.var])
+          extra.arguments[["Alpha_Initial_Value"]] <- mean(data[,outcome.var])
+        }
+      } else if (likelihood == "Weibull") {
+        if (debug) {
+          cat("Scaling survival times to between 0 and 1, and setting prior means and initial values for the intercept 
+            and scale parameters according to a NULL model survreg Weibull fit...\n")
+        }
+        data[,times.var] <- data[,times.var]/max(data[,times.var])
+        #library(survival)
+        survreg.res <- survreg(as.formula(paste0("Surv(",times.var, ",", outcome.var,") ~ 1")), data, dist="weibull")
+        alpha.survreg <- survreg.res$coefficients["(Intercept)"]
+        k.survreg <- survreg.res$scale
+        alpha.r2bglims <- log(1/exp(alpha.survreg))/k.survreg
+        k.r2bglims = 1/k.survreg 
+        if (is.null(extra.arguments)) {
+          extra.arguments=list(
+            "AlphaPriorMu"=alpha.r2bglims,
+            "Alpha_Initial_Value"=alpha.r2bglims,
+            "logWeibullScaleNormalPriorMean"=log(k.r2bglims),
+            "WeibullScale_Initial_Value"=k.r2bglims
+          )          
+        } else if (!"AlphaPriorMu" %in% names(extra.arguments)) {
+          extra.arguments[["AlphaPriorMu"]] <- alpha.r2bglims
+          extra.arguments[["Alpha_Initial_Value"]] <- alpha.r2bglims
+          extra.arguments[["logWeibullScaleNormalPriorMean"]]=log(k.r2bglims)
+          extra.arguments[["WeibullScale_Initial_Value"]]=k.r2bglims
+        }
+      }
+      
+    }
+    
+  }
+  
+  ### --- Write BGLiMS Arguments
+  t1 <- proc.time()["elapsed"]
+  # Set arguments
+  #load(file.path(pack.root, "data", "DefaultArguments.rda"))
+  default.arguments <- list(
+    "AlphaPriorMu" = 0,
+    "AlphaPriorSd" = 1000,
+    "logWeibullScaleNormalPriorMean" = 0,
+    "logWeibullScaleNormalPriorSd" = 1000,
+    "DirichletConcentration_GammaArg1" = 100,
+    "DirichletConcentration_GammaArg2" = 1,
+    "DirichletConcentration_Minimum" = 1,
+    "GaussianResidualPriorFamily" = 2,
+    "GaussianResidualPrior_UnifArg1" = 0,
+    "GaussianResidualPrior_UnifArg2" = 2,
+    "GaussianResidualVarianceInvGammaPrior_a" = 0.01,
+    "GaussianResidualVarianceInvGammaPrior_b" = 0.01,
+    "aucMultiplierWeight" = 1,
+    "Alpha_Initial_Value" =0,
+    "Beta_Initial_Value" =0,
+    "WeibullScale_Initial_Value" =1,
+    "DirichletConcentration_Initial_Value" =1,
+    "GaussianResidual_Initial_Value" =1,    
+    "Adaption_Bin" = 100,
+    "Adaption_Iterations" = 100000,
+    "Delete_Move_Probability" = 0.2,
+    "Add_Move_Probability" =0.2,
+    "Swap_Move_Probability" =0.2,    
+    "Alpha_Initial_Proposal_Sd" =0.1,
+    "Beta_Initial_Proposal_Sd" =0.05,
+    "Beta_Prec_Initial_Proposal_Sd" =0.1,
+    "WeibullScale_Initial_ProposalSd" =0.1,
+    "DirichletConcentration_Initial_ProposalSd" =0.1,
+    "LogGaussianResidual_Initial_ProposalSd" =0.1,
+    "Tau_Initial_ProposalSd" = 0.05,
+    "BetaAdd_Initial_Proposal_Sd" =0.1,
+    "BetaSwap_Initial_Proposal_Sd" =0.001,
+    "Alt_Saturated_Initial_Model" =0,
+    "Alt_Alpha_Initial_Value" =1,
+    "Alt_Beta_Initial_Value" =1,
+    "Alt_WeibullScale_Initial_Value" =1.25
+  )
+  if (!is.null(extra.arguments)) {
+    for (arg in names(extra.arguments)) {
+      if (debug) {
+        cat("Setting user specified argument",arg,"\n")
+      }
+      default.arguments[[arg]] <- extra.arguments[[arg]]
+    }    
+  }
+  # Write arguments
+  write(paste(names(default.arguments)[1],default.arguments[[1]]), file = arguments.file)    
+  for (arg in names(default.arguments)[-1]) {
+    write(paste(arg,format(default.arguments[[arg]],sci=F)), file = arguments.file, append = T)    
+  }
+  rm(default.arguments)
+  
+  #########################
+  #########################
+  #########################
+  ### --- JAM Setup --- ###
+  #########################
+  #########################
+  #########################
+  
+  if (likelihood %in% c("JAM", "JAM_MCMC")) {
+    if (is.null(ns.each.ethnicity)) {
+      if (!is.null(mafs.if.independent)) {
+        # Independent MAFs have been specified
+        if (is.null(names(mafs.if.independent))) stop("mafs.if.independent must be a named vector.")
+        X.ref = list(NULL)
+
+        ### --- Generate z = X'y for JAM
+        z <- NULL
+        for (ld.block in 1:length(X.ref)) {
+          snps.in.block <- names(mafs.if.independent)
+          # Use a common n
+          z <- c(z, JAM_PointEstimates(
+            marginal.betas = marginal.betas[snps.in.block],
+            X.ref=X.ref[[ld.block]],
+            n=n, just.get.z=TRUE,
+            mafs.if.independent=mafs.if.independent) )
+        }                
+      } else if (!is.null(X.ref)) {
+        # X.ref is given (not cor.ref)
+        ### --- Generate X'X, after normalising X
+        xTx <- list()
+        for (ld.block in 1:length(X.ref)) {
+          # Normalise X
+          X.normalised <- apply(X.ref[[ld.block]], MARGIN=2, function(x) x-mean(x))
+          # Calculate X'X
+          xTx[[ld.block]] <- t(X.normalised) %*% X.normalised
+          # Scale up by n/n.ref
+          xTx[[ld.block]] <- xTx[[ld.block]]*n/nrow(X.ref[[ld.block]]) # INTRODUCED ISSUE FOR JAM PREDICTION
+        }
+        ### --- Generate z = X'y for JAM
+        z <- NULL
+        for (ld.block in 1:length(X.ref)) {
+          snps.in.block <- colnames(X.ref[[ld.block]])
+          # Use a common n
+          z <- c(z, JAM_PointEstimates(
+            marginal.betas = marginal.betas[snps.in.block],
+            X.ref=X.ref[[ld.block]],
+            n=n, just.get.z=TRUE,
+            mafs.if.independent=mafs.if.independent) )
+        }
+      } else if (!is.null(cor.ref)) {
+        # Cor.ref given (not X.ref)
+        ### --- Generate X'X, from correlation matrix and MAFs
+        snp.sds <- sqrt(sapply(mafs.ref, function(p) 2*p*(1-p)))
+        xTx <- list()
+        for (ld.block in 1:length(cor.ref)) {
+          xTx[[ld.block]] <- cor.ref[[ld.block]]
+          # Scale by SDs
+          for (snp1 in colnames(xTx[[ld.block]])) {
+            for (snp2 in colnames(xTx[[ld.block]])) {
+              xTx[[ld.block]][snp1,snp2] <- xTx[[ld.block]][snp1,snp2]*(snp.sds[snp1]*snp.sds[snp2])
+            }
+          }
+          # Multiply by N
+          xTx[[ld.block]] <- xTx[[ld.block]]*n
+        }
+        ### --- Generate z = X'y for JAM
+        z <- NULL
+        for (ld.block in 1:length(cor.ref)) {
+          snps.in.block <- colnames(cor.ref[[ld.block]])
+          # Use a common n
+          z <- c(z, JAM_PointEstimates(
+            marginal.betas = marginal.betas[snps.in.block],
+            cor.ref=cor.ref[[ld.block]],
+            mafs.ref=mafs.ref,
+            n=n, just.get.z=TRUE,
+            mafs.if.independent=mafs.if.independent) )
+        }
+      }
+      
+      ### --- MR loss function setup
+      mrloss.marginal.causal.effects <- mrloss.marginal.by/marginal.betas
+      mrloss.marginal.causal.effect.ses <- mrloss.marginal.sy/marginal.betas
+    } else {
+      # UPDATE FOR MULTI-ETHNIC JAM WITH cor.ref
+      ### --- Generate X'X, after normalising X
+      xTx <- list()
+      for (e in 1:length(X.ref)) {
+        # Normalise X
+        X.normalised <- apply(X.ref[[e]], MARGIN=2, function(x) x-mean(x))
+        # Calculate X'X
+        xTx[[e]] <- t(X.normalised) %*% X.normalised
+        # Scale up by n/n.ref
+        xTx[[e]] <- xTx[[e]]*ns.each.ethnicity[e]/nrow(X.ref[[e]])
+      }
+      
+      ### --- Generate z = X'y for JAM
+      z <- list()
+      for (e in 1:length(X.ref)) {
+        z[[e]] <- JAM_PointEstimates(
+          marginal.betas = marginal.betas[[e]],
+          X.ref=X.ref[[e]],
+          n=ns.each.ethnicity[e], just.get.z=TRUE)
+      }
+    }
+  }
+
+  ### --- Write data
+  .WriteData(
+    data.file=data.file,
+    likelihood=likelihood,
+    data=data,
+    outcome.var=outcome.var,
+    times.var=times.var,
+    confounders=confounders, 
+    predictors=predictors,
+    model.space.priors=model.space.priors,
+    beta.priors=beta.priors,
+    beta.prior.partitions=beta.prior.partitions,
+    g.prior=g.prior,
+    model.tau=model.tau,
+    tau=tau,
+    xtx.ridge.term=xtx.ridge.term,
+    enumerate.up.to.dim=enumerate.up.to.dim,
+    n=n,
+    xTx=xTx,
+    z=z,
+    ns.each.ethnicity=ns.each.ethnicity,
+    initial.model=initial.model,
+    trait.variance = trait.variance,
+    logistic.likelihood.weights = logistic.likelihood.weights,
+    mrloss.w = mrloss.w,
+    mrloss.function = mrloss.function,
+    mrloss.marginal.causal.effects = mrloss.marginal.causal.effects,
+    mrloss.marginal.causal.effect.ses = mrloss.marginal.causal.effect.ses,
+    mafs.if.independent = mafs.if.independent,
+    debug=debug
+  )
+  t2 <- proc.time()["elapsed"]
+  write.time <- t2-t1
+  hrs <-floor( (t2-t1)/(60*60) )
+  mins <- floor( (t2-t1-60*60*hrs)/60 )
+  secs <- round(t2-t1-hrs*60*60 - mins*60)
+  if (debug) {
+    cat(paste("Data written in",hrs,"hrs",mins,"mins and",secs,"seconds.\n"))
+  }
+    
+  ### --- Generate commands
+  if (is.null(thinning.interval)) {
+    thinning.interval <- max(n.iter/1e4, 1) # If 1 million iterations, save every 100th
+  }
+  n.iter.report.output <- round(n.iter/10) # How often to report progress to console
+  if (!is.null(extra.java.arguments)) {extra.java.arguments <- paste(extra.java.arguments," ",sep="")}
+  comm <- paste(
+    "java ",extra.java.arguments,"-jar \"", bayesglm.jar, "\" \"",
+    arguments.file, "\" \"", data.file, "\" \"",
+    results.file, "\" ",
+    format(n.iter,sci=F)," ",
+    format(ceiling(n.iter*burnin.fraction),sci=F)," ", # Round number of iterations to discard as burn-in
+    format(thinning.interval,sci=F)," ",
+    format(n.iter.report.output, sci=F)," ",
+    seed," ",
+    as.integer(model.selection)," ",
+    as.integer(g.prior)," ",
+    as.integer(alt.initial.values)," ",
+    as.integer(max.model.dim)," ",
+    n.mod.space.comps," ",
+    modSpaceDistribution, sep=""
+  )
+  for (i in 1:n.mod.space.comps) {
+    if (modSpaceDistribution==0) {
+      comm <- paste(comm, format(model.space.priors[[i]][["Rate"]],sci=F) )      
+    } else if (modSpaceDistribution==1) {
+      comm <- paste(comm, format(model.space.priors[[i]][["a"]],sci=F) )      
+      comm <- paste(comm, format(model.space.priors[[i]][["b"]],sci=F) )      
+    }
+  }
+  if (n.mod.space.comps>1) {
+    for (i in 1:(n.mod.space.comps-1) ) {
+      comm <- paste(comm, length(model.space.priors[[i]][["Variables"]]) )
+    }
+  }
+  
+  ### --- Run commands
+  if (debug) {
+    cat("Calling BGLiMS Java algorithm with command: \n")
+    cat(comm, "\n")
+  }
+  jobs <- list()  
+  t1 <- proc.time()["elapsed"]
+  system(comm)
+  t2 <- proc.time()["elapsed"]
+  bglims.time <- t2-t1
+  hrs <-floor( (t2-t1)/(60*60) )
+  mins <- floor( (t2-t1-60*60*hrs)/60 )
+  secs <- round(t2-t1-hrs*60*60 - mins*60)
+  if (debug) {
+    cat(paste("BGLiMS Java computation finished in",hrs,"hrs",mins,"mins and",secs,"seconds.\n"))
+  }
+  
+  ##################################
+  ##################################
+  ##################################
+  ### --- Results processing --- ###
+  ##################################
+  ##################################
+  ##################################
+  
+  t1 <- proc.time()["elapsed"]
+  
+  ### --- Read BGLiMS arguments
+  bglims.arguments <- as.list(read.table(results.file, header=T, sep=" ", nrows=1))
+  bglims.arguments$Likelihood <- as.character(bglims.arguments$Likelihood)
+  bglims.arguments$ModelSpacePriorFamily <- as.character(bglims.arguments$ModelSpacePriorFamily)
+  n.lines.until.rjmcmc.output <- 3 # There are always three lines of meta-data
+  enumerated.posterior.inference <- list("No enumeration was done.")
+  if (enumerate.up.to.dim>0) {
+    ### -- Read enumerated posterior scores
+    enumerated.model.likelihood.scores <- NULL
+    for (max.model.dimension in c(0:enumerate.up.to.dim)) { # From 0 to account for the null model
+      n.models.this.dimension <- choose(bglims.arguments$V - bglims.arguments$startRJ, max.model.dimension)
+      model.scores.this.dimension <- read.table(
+        results.file,
+        skip = n.lines.until.rjmcmc.output,
+        header=FALSE,
+        nrows=n.models.this.dimension)
+      n.lines.until.rjmcmc.output <- n.lines.until.rjmcmc.output+n.models.this.dimension
+      enumerated.model.likelihood.scores <- rbind(enumerated.model.likelihood.scores, model.scores.this.dimension)    
+    }
+    colnames(enumerated.model.likelihood.scores) <- c("Model", "PosteriorScore")
+    enumerated.model.likelihood.scores$Model <- as.character(enumerated.model.likelihood.scores$Model)
+    enumerated.posterior.inference <- .ApproxPostProbsByModelEnumeration(enumerated.model.likelihood.scores, model.space.priors, enumerate.up.to.dim)
+  }
+  
+  ### --- Read MCMC output
+  n.rows.written <- floor((1-burnin.fraction)*bglims.arguments$iterations)/bglims.arguments$thin
+  mcmc.output <- read.table(
+    results.file,
+    skip = n.lines.until.rjmcmc.output,
+    header=TRUE,
+    nrows=n.rows.written)
+
+  ### --- Summary table
+  posterior.summary.table <- matrix(NA,ncol(mcmc.output)+length(model.space.priors),9)
+  colnames(posterior.summary.table) = c("PostProb","Median","CrI_Lower","CrI_Upper",
+    "Median_Present","CrI_Lower_Present","CrI_Upper_Present","Mean","BF")
+  rownames(posterior.summary.table) <- c(colnames(mcmc.output),paste("ModelSizePartition",c(1:length(model.space.priors)),sep=""))
+  # Prior probabilties - used for Bayes Factors below
+  prior.probs <- rep(NA, nrow(posterior.summary.table))
+  names(prior.probs) <- rownames(posterior.summary.table)
+  for (c in 1:length(model.space.priors)) {
+    # Calculate partition specific covariate specific prior probabilities of inclusion
+    if ("Rate" %in% names(model.space.priors[[c]]) ) {
+      prior.probs[model.space.priors[[c]]$Variables] <- .ModelSpaceSpecProb(length(model.space.priors[[c]]$Variables), model.space.priors[[c]]$Rate)
+    } else {
+      prior.probs[model.space.priors[[c]]$Variables] <- model.space.priors[[c]]$a/(model.space.priors[[c]]$a + model.space.priors[[c]]$b)
+    }
+    # Calculate posterior on model dimension in each partition
+    model.dim.posterior.c <- apply(as.matrix(mcmc.output[,model.space.priors[[c]]$Variables]),MARGIN=1,function(x)sum(x!=0)) # Wrap in as.matrix incase model space partition has one variable
+    posterior.summary.table[paste("ModelSizePartition",c,sep=""),c("CrI_Lower", "Median", "CrI_Upper")] <- quantile(model.dim.posterior.c,c(0.025, 0.5, 0.975))
+  }
+  # Fill in the summary table
+  for (v in colnames(mcmc.output)) {
+    # Rescale parameter estimates after standardisation
+    if (standardise.covariates & likelihood %in% c("Logistic", "Weibull", "Linear") ) {
+      if (v %in% names(sds.before.standardisation)) {
+        mcmc.output[,v] <- mcmc.output[,v]/sds.before.standardisation[v]
+      }
+    }
+    if (!likelihood %in% c("LinearConj")) {
+      posterior.summary.table[v,c("CrI_Lower", "Median", "CrI_Upper")] <- quantile(mcmc.output[,v],c(0.025, 0.5, 0.975))
+      posterior.summary.table[v,"Mean"] <- mean(mcmc.output[,v])
+    }
+    if (v %in% unlist(lapply(model.space.priors, function(x) x$Variables))) {
+      if (!likelihood %in% c("LinearConj")) {
+        posterior.summary.table[v,c("CrI_Lower_Present", "Median_Present", "CrI_Upper_Present")] <- quantile(mcmc.output[,v][mcmc.output[,v]!=0],c(0.025, 0.5, 0.975) )
+      }
+      posterior.summary.table[v,"PostProb"] <- length( mcmc.output[,v][mcmc.output[,v]!=0] ) / nrow(mcmc.output)      
+      if (enumerate.up.to.dim>0) {
+        # Replace with enumeration probs
+        posterior.summary.table[v,"PostProb"] <- enumerated.posterior.inference$marg.probs[v]
+      }
+      posterior.summary.table[v,"BF"] <- .BayesFactor(prior.probs[v], posterior.summary.table[v,"PostProb"])
+      if (likelihood %in% c("Weibull", "Logistic") ) {
+        # Exponentiate quantiles
+        posterior.summary.table[v,c("CrI_Lower", "Median", "CrI_Upper","CrI_Lower_Present", "Median_Present","CrI_Upper_Present")] <- exp(posterior.summary.table[v,c("CrI_Lower", "Median", "CrI_Upper","CrI_Lower_Present", "Median_Present","CrI_Upper_Present")])
+      }
+    }
+  }
+  
+  t2 <- proc.time()["elapsed"]  
+  results.processing.time <- t2-t1
+  hrs <-floor( (t2-t1)/(60*60) )
+  mins <- floor( (t2-t1-60*60*hrs)/60 )
+  secs <- round(t2-t1-hrs*60*60 - mins*60)
+  if (debug) {
+    cat(paste("Posterior output processed in",hrs,"hrs",mins,"mins and",secs,"seconds.\n"))
+  }
+  
+  ########################
+  ########################
+  ### --- Clean up --- ###
+  ########################
+  ########################
+  
+  if (clean.up.bglims.files) {
+    unlink(c(arguments.file, data.file, results.file), recursive = FALSE, force = TRUE)
+  }
+  hrs <-floor( (t2-t1)/(60*60) )
+  mins <- floor( (t2-t1-60*60*hrs)/60 )
+  secs <- round(t2-t1-hrs*60*60 - mins*60)
+  
+  #########################
+  #########################
+  ### --- Run times --- ###
+  #########################
+  #########################
+  
+  run.times <- list()
+  run.times$write.time <- write.time
+  run.times$bglims.time <- bglims.time
+  run.times$results.processing.time <- results.processing.time
+  
+  ################################
+  ################################
+  ### --- Create S4 Object --- ###
+  ################################
+  ################################
+
+  # Create dummies for any missing slots in order to create S4 object
+  if (is.null(confounders)) {confounders <- c("None")}
+  if (is.null(beta.prior.partitions)) {beta.prior.partitions <- list("NA")}
+  if (is.null(n)) {n <- nrow(data)}
+  results <- methods::new(
+    "R2BGLiMS_Results",
+    likelihood = likelihood,
+    n = n,
+    posterior.summary.table = posterior.summary.table,
+    enumerate.up.to.dim = enumerate.up.to.dim,
+    enumerated.posterior.inference = enumerated.posterior.inference,
+    n.iterations = n.iter,
+    thin = bglims.arguments$thin,
+    burnin.fraction = burnin.fraction,
+    model.space.priors = model.space.priors,
+    beta.prior.partitions = beta.prior.partitions,
+    confounders = confounders,
+    run.times=run.times,
+    n.covariate.blocks.for.jam = 1,
+    bglims.arguments=bglims.arguments,
+    mcmc.output=mcmc.output
+    )
+  
+  return(results)
+}
