@@ -280,7 +280,7 @@ below, to indicate the required format.</p>
 - r2.minmerge: merge groups with minimum between-group r2 &gt; r2.minmerge, default is 0.5;
 
 - extra.java.arguments: default is NULL; A character string to be passed through to the java command line. E.g. to specify a different temporary directory by passing "-Djava.io.tmpdir=/Temp".</code></pre>
-<p>Ouput can be viewed <a href="#JAMdwithGroups-output">here</a>.</p>
+<p>Ouput can be viewed <a href="#jamdwithgroups-output">here</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="example-of-multijamd">Example of multiJAMd<a class="anchor" aria-label="anchor" href="#example-of-multijamd"></a>
@@ -311,6 +311,7 @@ different arguments are:</p>
 - N: scalar that is the trait sample size - same for all traits; if different sample sizes across traits, use flashfm to return single and multi-trait results;
 
 - NCORES: number of cores for parallel computing; recommend NCORES=M in hpc or Linux, but if on local Windows/Mac machines, use NCORES=1.</code></pre>
+<p>Ouput can be viewed <a href="#multijamd-output">here</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="example-of-flashfmzerowithjamd">Example of FLASHFMZEROwithJAMd<a class="anchor" aria-label="anchor" href="#example-of-flashfmzerowithjamd"></a>
@@ -341,7 +342,7 @@ the extra arguments are:</p>
 <pre><code>- TOdds: target odds of no sharing to sharing, default is 1.
 
 - cpp: cumulative posterior probability threshold for selecting top models, default is 0.99.</code></pre>
-<p>Ouput can be viewed <a href="#FLASHFMZEROwithJAMd-output">here</a>.</p>
+<p>Ouput can be viewed <a href="#flashfmzerowithjamd-output">here</a>.</p>
 </div>
 <div class="section level3">
 <h3 id="output">Output<a class="anchor" aria-label="anchor" href="#output"></a>
@@ -394,6 +395,10 @@ the extra arguments are:</p>
 <span><span class="co"># $A</span></span>
 <span><span class="co"># [1] "chr1_bp3691727_rsidrs1175549" "chr1_bp3691528_rsidrs1175550" "chr1_bp3687739_rsidrs1175552"</span></span>
 <span><span class="co"># [4] "chr1_bp3684954_rsidrs1181870"</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="multijamd-output">multiJAMd output<a class="anchor" aria-label="anchor" href="#multijamd-output"></a>
+</h3>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; all.single.traits.results</span></span>
 <span><span class="co"># $mpp.pp</span></span>
