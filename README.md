@@ -3,6 +3,11 @@
 
 # flashfmZero
 
+<!-- badges: start -->
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13305579.svg)](https://doi.org/10.5281/zenodo.13305579)
+<!-- badges: end -->
+
 FlashfmZero is a computationally efficient approach to simultaneously
 fine-map signals in any number of uncorrelated quantitative traits
 (i.e. zero correlation), as may result from latent traits estimated from

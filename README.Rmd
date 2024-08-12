@@ -15,6 +15,11 @@ knitr::opts_chunk$set(
 
 # flashfmZero
 
+<!-- badges: start -->
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13305579.svg)](https://doi.org/10.5281/zenodo.13305579)
+<!-- badges: end -->
+
+
 FlashfmZero is a computationally efficient approach to simultaneously fine-map signals in any number of uncorrelated quantitative traits (i.e. zero correlation), as may result from latent traits estimated from factor analysis using a varimax rotation. 
 	     
 For correlated traits, the original [flashfm](https://www.nature.com/articles/s41467-021-26364-y) multi-trait fine-mapping method should be used, which is available in this package for convenience. 
