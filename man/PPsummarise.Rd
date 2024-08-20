@@ -4,14 +4,14 @@
 \alias{PPsummarise}
 \title{Summarise PP and MPP results from single-trait fine-mapping and flashfm, by SNP and by SNP group}
 \usage{
-PPsummarise(fm.multi, snpGroups, minPP = 0.05)
+PPsummarise(fm.multi, snpGroups, minPP = 0.01)
 }
 \arguments{
 \item{fm.multi}{output from flashfm function}
 
-\item{snpGroups}{list of two sets of snp groups; output from makeSNPgroups2}
+\item{snpGroups}{list of two sets of snp groups; output from makeSNPgroups2; setting snpGroups=NULL will return only SNP-level results}
 
-\item{minPP}{a single value such that output for groups consists of group models where PP > minPP for at least one set of fine-mapping results; default is 0.05}
+\item{minPP}{a single value such that output for groups consists of group models where PP > minPP for at least one set of fine-mapping results; default is 0.01}
 }
 \value{
 a list of 4 objects: MPP lists trait-specific PP of SNP inclusion in a model; MPPg lists trait-specific PP of SNP group inclusion in a model;
