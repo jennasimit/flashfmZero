@@ -15,8 +15,8 @@ factor analysis using a varimax rotation.
 
 For correlated traits, the original
 [flashfm](https://www.nature.com/articles/s41467-021-26364-y)
-multi-trait fine-mapping method should be used, which is available in
-this package for convenience.
+multi-trait fine-mapping method should be used and cited, which is
+available in this package for convenience.
 
 Flashfm and flashfmZero output trait-specific results,leveraging
 information between traits; for each trait, credible sets, SNP marginal
@@ -26,8 +26,9 @@ posterior probabilities (PP) are output.
 For more details, please see:
 
 F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2024). Improved genetic
-discovery and fine-mapping resolution of high-dimensional traits through
-multivariate analyses of latent factors. *Pre-print*.
+discovery and fine-mapping resolution through multivariate latent factor
+analysis of high-dimensional traits. bioRxiv
+<https://doi.org/10.1101/2024.08.23.609452>
 
 Website available at: <https://jennasimit.github.io/flashfmZero/>
 

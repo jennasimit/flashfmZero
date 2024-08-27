@@ -47,7 +47,7 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">PPsummarise</span><span class="op">(</span><span class="va">fm.multi</span>, <span class="va">snpGroups</span>, minPP <span class="op">=</span> <span class="fl">0.05</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">PPsummarise</span><span class="op">(</span><span class="va">fm.multi</span>, <span class="va">snpGroups</span>, minPP <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -57,11 +57,11 @@
 
 
 <dt>snpGroups</dt>
-<dd><p>list of two sets of snp groups; output from makeSNPgroups2</p></dd>
+<dd><p>list of two sets of snp groups; output from makeSNPgroups2; setting snpGroups=NULL will return only SNP-level results</p></dd>
 
 
 <dt>minPP</dt>
-<dd><p>a single value such that output for groups consists of group models where PP &gt; minPP for at least one set of fine-mapping results; default is 0.05</p></dd>
+<dd><p>a single value such that output for groups consists of group models where PP &gt; minPP for at least one set of fine-mapping results; default is 0.01</p></dd>
 
 </dl></div>
     <div id="value">
