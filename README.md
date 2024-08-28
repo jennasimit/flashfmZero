@@ -27,8 +27,8 @@ For more details, please see:
 
 F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2024). Improved genetic
 discovery and fine-mapping resolution through multivariate latent factor
-analysis of high-dimensional traits. bioRxiv
-<https://doi.org/10.1101/2024.08.23.609452>
+analysis of high-dimensional traits.
+[bioRxiv](https://www.biorxiv.org/content/10.1101/2024.08.23.609452v1)
 
 Website available at: <https://jennasimit.github.io/flashfmZero/>
 
