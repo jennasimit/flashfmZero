@@ -41,9 +41,28 @@ are available here:
 
 ## System Requirements
 
-flashfmZero could be installed with ease on versions of R \> 4.2.1. If
-installing on a Windows machine, Rtools must be installed. Installation
-time is estimated as 2 minutes.
+flashfmZero could be installed with ease on versions of R \> 4.2.1 and
+is compatible with **all platforms**.
+
+Installation time is estimated as 2 minutes.
+
+Specific requirements for Windows and Mac platforms follow.
+
+**Windows**
+
+Must install [Rtools](https://cran.r-project.org/bin/windows/Rtools/).
+
+**Mac**
+
+Must have the following installed (details at [R for
+MacOS](https://cran.r-project.org/bin/macosx/tools/)):
+
+1.  Xcode: free on the Apple App Store
+
+2.  Fortran compiler. R 4.3.0 and higher use universal GNU Fortran 12.2
+    compiler and an installer package is available here:
+    [gfortran-12.2-universal.pkg](https://mac.r-project.org/tools/gfortran-12.2-universal.pkg)
+    (242MB)
 
 ## Installation Guide
 
@@ -65,8 +84,8 @@ install.packages("gtools")
 install.packages("rlist")
 ```
 
-NB: Must have a Java JDK installed in order to run R2BGLiMS (it is
-pre-installed in the flashfmZero package, no need install it
+NB: Must have a Java JDK installed in order to run R2BGLiMS (R2BGLiMS is
+pre-installed in the flashfmZero package, so no need to install it
 separately). This is only needed if you need to run single-trait
 fine-mapping using JAM. If single-trait fine-mapping results are
 available, then it is not necessary to have Java JDK installed.

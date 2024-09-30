@@ -80,7 +80,17 @@
 <div class="section level2">
 <h2 id="system-requirements">System Requirements<a class="anchor" aria-label="anchor" href="#system-requirements"></a>
 </h2>
-<p>flashfmZero could be installed with ease on versions of R &gt; 4.2.1. If installing on a Windows machine, Rtools must be installed. Installation time is estimated as 2 minutes.</p>
+<p>flashfmZero could be installed with ease on versions of R &gt; 4.2.1 and is compatible with <strong>all platforms</strong>.</p>
+<p>Installation time is estimated as 2 minutes.</p>
+<p>Specific requirements for Windows and Mac platforms follow.</p>
+<p><strong>Windows</strong></p>
+<p>Must install <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>.</p>
+<p><strong>Mac</strong></p>
+<p>Must have the following installed (details at <a href="https://cran.r-project.org/bin/macosx/tools/" class="external-link">R for MacOS</a>):</p>
+<ol style="list-style-type: decimal">
+<li><p>Xcode: free on the Apple App Store</p></li>
+<li><p>Fortran compiler. R 4.3.0 and higher use universal GNU Fortran 12.2 compiler and an installer package is available here: <a href="https://mac.r-project.org/tools/gfortran-12.2-universal.pkg" class="external-link">gfortran-12.2-universal.pkg</a> (242MB)</p></li>
+</ol>
 </div>
 <div class="section level2">
 <h2 id="installation-guide">Installation Guide<a class="anchor" aria-label="anchor" href="#installation-guide"></a>
@@ -101,7 +111,7 @@
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"Matrix"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"gtools"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"rlist"</span><span class="op">)</span></span></code></pre></div>
-<p>NB: Must have a Java JDK installed in order to run R2BGLiMS (it is pre-installed in the flashfmZero package, no need install it separately). This is only needed if you need to run single-trait fine-mapping using JAM. If single-trait fine-mapping results are available, then it is not necessary to have Java JDK installed.</p>
+<p>NB: Must have a Java JDK installed in order to run R2BGLiMS (R2BGLiMS is pre-installed in the flashfmZero package, so no need to install it separately). This is only needed if you need to run single-trait fine-mapping using JAM. If single-trait fine-mapping results are available, then it is not necessary to have Java JDK installed.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"jennasimit/flashfmZero"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span></code></pre></div>

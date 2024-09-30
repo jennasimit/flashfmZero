@@ -40,7 +40,10 @@ Available in this package are:
 
 4. **FLASHFMwithJAMd**: flashfm multi-trait fine-mapping with JAMdynamic (as available in MGflashfm at https://jennasimit.github.io/MGflashfm/, where an example is provided); runs single and multi-trait fine-mapping and outputs both sets of results. The trait correlation needs to be provided as input, and allows up to six traits.
 
-5. All flashfm multi-trait fine-mapping functions (from https://jennasimit.github.io/flashfm/, https://jennasimit.github.io/MGflashfm/), allowing integration with any single-trait fine-mapping method that outputs multi-SNP model posterior probabilities.
+For use with pre-calculated single-trait fine-mapping results, use the function flashfmZero and follow the steps in the last example [here](https://jennasimit.github.io/flashfm/articles/flashfm.html#simulation-example), which illustrates how to combine flashfm (same steps as for flashfmZero) with [FINEMAP](https://academic.oup.com/bioinformatics/article/32/10/1493/1743040).  
+
+
+5. All flashfm multi-trait fine-mapping functions (from https://jennasimit.github.io/flashfm/, https://jennasimit.github.io/MGflashfm/), allowing integration with any single-trait fine-mapping method that outputs multi-SNP model posterior probabilities (see details how [here](https://jennasimit.github.io/flashfm/articles/flashfm.html#simulation-example)).
 
 **Notes:** 
 
@@ -54,7 +57,6 @@ paste0("chr", gsub(":", "_", snpnames)
 
 
 This vignette introduces **JAMdwithGroups**, **multiJAMd**, and **FLASHFMZEROwithJAMd** and gives illustrations of their use on example data of three uncorrelated latent factors based on the INTERVAL cohort, for a subset of the *SMIM1* region; this example data are provided in the flashfmZero R package. 
-
 
 Example data are described below, followed by illustrations.
 
