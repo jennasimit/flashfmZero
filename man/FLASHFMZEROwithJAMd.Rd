@@ -24,7 +24,7 @@ FLASHFMZEROwithJAMd(
 
 \item{corX}{SNP correlation matrix}
 
-\item{N}{Vector of length M; Nall[i] is the (effective) sample size for trait i}
+\item{N}{sample size}
 
 \item{save.path}{Path to save JAM output files; tmp files and could delete these later e.g. save.path=paste0(DIRout,"/tmpJAM/region1").}
 

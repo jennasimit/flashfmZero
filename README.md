@@ -8,8 +8,8 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13305579.svg)](https://doi.org/10.5281/zenodo.13305579)
 <!-- badges: end -->
 
-FlashfmZero is a computationally efficient approach to simultaneously
-fine-map signals in any number of uncorrelated quantitative traits
+FlashfmZero is a computationally efficient approach to **jointly
+fine-map signals in any number of uncorrelated quantitative traits**
 (i.e. zero correlation), as may result from latent traits estimated from
 factor analysis using a varimax rotation.
 
@@ -22,6 +22,10 @@ Flashfm and flashfmZero output trait-specific results,leveraging
 information between traits; for each trait, credible sets, SNP marginal
 posterior probabilities of causality (MPP), and multi-SNP model
 posterior probabilities (PP) are output.
+
+We also provide an approach to **estimate latent factor GWAS summary
+statistics using only summary level data** - observed trait GWAS summary
+statistics, observed trait covariance matrix.
 
 For more details, please see:
 

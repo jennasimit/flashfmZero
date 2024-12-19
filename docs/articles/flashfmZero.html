@@ -73,10 +73,14 @@
 <h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
 </h2>
 <p><em>flashfmZero</em> (flexible and shared information fine-mapping of
-uncorrelated quantitative traits) is an R package to simultaneously
-fine-map genetic associations for multiple (with zero correlation)
-quantitative traits. It extends on the multi-trait fine-mapping
-framework of <a href="https://www.nature.com/articles/s41467-021-26364-y" class="external-link">flashfm</a>.</p>
+uncorrelated quantitative traits) is an R package to
+<strong>simultaneously fine-map genetic associations for multiple (with
+zero correlation) quantitative traits</strong>. It extends on the
+multi-trait fine-mapping framework of <a href="https://www.nature.com/articles/s41467-021-26364-y" class="external-link">flashfm</a>.
+In addition, it provides an approach to <strong>estimate latent factor
+GWAS summary statistics using only summary level data</strong> -
+observed trait GWAS summary statistics, observed trait covariance
+matrix.</p>
 <p>FlashfmZero is a computationally efficient approach to simultaneously
 fine-map signals in any number of uncorrelated quantitative traits
 (i.e. zero correlation), as may result from latent factors estimated
@@ -93,11 +97,208 @@ we provide wrapper functions that integrate our expanded version of <a href="htt
 A wrapper function for flashfm with <a href="https://academic.oup.com/bioinformatics/article/32/10/1493/1743040" class="external-link">FINEMAP</a>,
 FLASHFMwithFINEMAP, is available here with examples in the <a href="https://jennasimit.github.io/flashfm/" class="external-link">flashfm R package</a>,
 where an overview of flashfm multi-trait fine-mapping is provided.</p>
+<p>Example scripts that only use observed trait summary-level data in
+our analysis of the INTERVAL study’s blood cell traits and NMR metabolic
+traits are available at:</p>
+<p><strong><em>XXX</em></strong> <strong><em>YYY</em></strong></p>
 <p>For more details, please see:</p>
 <p>F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2024). Improved
 fine-mapping resolution of high-dimensional traits through multivariate
 analyses of latent factors. BioRxiv</p>
-<p>Available in this package are:</p>
+<p><strong>Estimating latent factor GWAS summary statistics from
+observed trait GWAS summary statistics</strong></p>
+<p>We recommend removing any traits that have measurements from fewer
+than half of the participants in the study. Factor analysis estimates
+latent factors from the covariance matrix of the observed traits, but
+when there are many highly correlated latent factors (e.g. multiple
+pairs of traits with correlation &gt; 0.99, as in the NMR data from the
+INTERVAL study) it is not computationally possible. In such cases, we
+recommend removing traits one-by-one based on the number of
+high-correlations that they have, as illustrated in
+<strong><em>YYY</em></strong></p>
+<p>Example code (with data provided in this package) are described
+for:</p>
+<ol style="list-style-type: decimal">
+<li><p><a href="#factor-analysis-and-latent-factor-interpretation">Factor Analysis
+and interpretation of latent factors</a></p></li>
+<li><p><a href="#latent-factor-gwas">Latent factor GWAS summary
+statistics estimation using summary-level data</a></p></li>
+<li><p><a href="#fine-mapping">Single and multi-trait
+fine-mapping</a></p></li>
+</ol>
+</div>
+<div class="section level2">
+<h2 id="factor-analysis-and-latent-factor-interpretation">Factor analysis and latent factor interpretation<a class="anchor" aria-label="anchor" href="#factor-analysis-and-latent-factor-interpretation"></a>
+</h2>
+<p><em>Factor analysis</em> is used to estimate the factor loadings for
+the latent factors that explain variation in the observed traits and is
+carried out using functions from the <em>psych</em> R library. It only
+requires the <em>trait covariance matrix</em>, which may be calculated
+from the individual-level trait data, allowing for missing trait
+measurements, i.e. each trait covariance is calculated from pairwise
+complete trait measurements. Alternatively, the trait covariance could
+be estimated from GWAS summary statistics using a method like
+cross-trait LD score regression.</p>
+<p>Below we illustrate how to run factor analysis using 10 blood cell
+traits from the INTERVAL study; this is a subset of the 99 blood cell
+traits that are available. The INTERVAL study consists of healthy UK
+blood donors and the original GWAS data are described in <a href="https://doi.org/10.1016/j.cell.2016.10.042" class="external-link">Astle et
+al. (2016)</a> and <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">Akbari et
+al. (2023)</a>.</p>
+<p>The trait covariance matrix for the 10 selected traits was calculated
+using pairwise complete observations and is stored as <em>sel_covY</em>
+in this package.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://personality-project.org/r/psych/" class="external-link">psych</a></span><span class="op">)</span></span>
+<span><span class="va">sel_covY</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cov</a></span><span class="op">(</span><span class="va">Y</span>, use<span class="op">=</span><span class="st">"pairwise.complete.obs"</span>, method<span class="op">=</span><span class="st">'pearson'</span><span class="op">)</span> <span class="co"># Y is an NxP matrix of P traits (allowing for missing values) measured in a sample of N individuals</span></span>
+<span><span class="co"># alternatively, covY could be estimated from GWAS summary statistics using a method like cross-trait LD score regression</span></span></code></pre></div>
+<p>The trait covariance is then used to estimate the number of latent
+factors using the psych::fa.parallel function, with arguments fa=“fa”
+for factor analysis, fm=“ml” for maximum likelihood estimation, and
+rotate=“varimax” for a varimax rotation, which ensures that the latent
+factors have zero correlation. The fa.parallel function will produce a
+scree plot to help determine the number of factor and will suggest the
+number of factors, which is printed to the screen and stored in the
+“nfact” list component of the fa.parallel output.</p>
+<p>After estimating the number of latent factors, factor analysis is run
+using psych::fa and specifying the number of latent factors, nfact,
+fm=“ml” for maximum likelihood estimation, and rotate=“varimax” for a
+varimax rotation. The factor loadings are stored in the loadings
+component of the fa output, and we provide it in this package as
+<em>faYloading</em>.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">43059</span> <span class="co"># INTERVAL study sample size</span></span>
+<span><span class="va">facheck</span> <span class="op">&lt;-</span> <span class="fu">psych</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/psych/man/fa.parallel.html" class="external-link">fa.parallel</a></span><span class="op">(</span><span class="va">sel_covY</span>, fm<span class="op">=</span><span class="st">"ml"</span>, n.obs<span class="op">=</span><span class="va">N</span>,fa<span class="op">=</span><span class="st">"fa"</span>,show.legend<span class="op">=</span><span class="cn">F</span>,main<span class="op">=</span><span class="st">""</span><span class="op">)</span> <span class="co"># select number of factors</span></span>
+<span><span class="va">faY</span> <span class="op">&lt;-</span> <span class="fu">psych</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/psych/man/fa.html" class="external-link">fa</a></span><span class="op">(</span>r<span class="op">=</span><span class="va">sel_covY</span>, nfactors<span class="op">=</span><span class="va">facheck</span><span class="op">$</span><span class="va">nfact</span>, fm<span class="op">=</span><span class="st">"ml"</span>, rotate<span class="op">=</span><span class="st">"varimax"</span><span class="op">)</span> <span class="co"># run factor analysis</span></span>
+<span><span class="va">faYloading</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">faY</span><span class="op">$</span><span class="va">loadings</span><span class="op">)</span> <span class="co"># factor loadings matrix available in this package for convenience</span></span></code></pre></div>
+<p>We provide the function <em>factor_contributions</em> that helps in
+interpreting latent factors. This function takes the factor loading
+matrix as input and returns the latent factor contributions (re-scaled
+factor loadings) and factor loading matrix with observed traits ordered
+by maximum contributing latent factor. The contribution of latent factor
+j to observed trait i indicates the proportion of variance in the
+observed trait that is explained by the latent factor. Grouping observed
+traits by common highest contributing latent factor helps in
+understanding which groups of observed traits have common underlying
+latent factors.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
+<span><span class="va">latent_terms</span> <span class="op">&lt;-</span> <span class="fu">flashfmZero</span><span class="fu">::</span><span class="fu"><a href="../reference/factor_contributions.html">factor_contributions</a></span><span class="op">(</span><span class="va">faYloading</span><span class="op">)</span> </span>
+<span><span class="va">rescaledFAloading</span> <span class="op">&lt;-</span> <span class="va">latent_terms</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span> <span class="co"># rows are observed traits and columns are latent factors</span></span>
+<span><span class="va">FAloading</span> <span class="op">&lt;-</span> <span class="va">latent_terms</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">sel_covY</span> <span class="op">&lt;-</span> <span class="va">sel_covY</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">FAloading</span><span class="op">)</span>,<span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">rownames</a></span><span class="op">(</span><span class="va">FAloading</span><span class="op">)</span><span class="op">]</span> <span class="co"># reorder covY so traits are in same order as for FAloading</span></span></code></pre></div>
+<p>In our example data of ten traits, four latent factors are
+recommended and the contributions matrix is:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">rescaledFAloading</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                    ML1        ML2          ML3          ML4</span></span>
+<span><span class="co">#&gt; RET_Xch    0.881629882 0.04011455 0.0681982614 0.0100573054</span></span>
+<span><span class="co">#&gt; mfr_pct    0.933805744 0.02891708 0.0125177905 0.0247593890</span></span>
+<span><span class="co">#&gt; lfr_pct    0.893484382 0.02997260 0.0613639012 0.0151791210</span></span>
+<span><span class="co">#&gt; hlr_p      0.892301102 0.01670686 0.0231408061 0.0678512359</span></span>
+<span><span class="co">#&gt; hlr        0.891476867 0.01295529 0.0216744860 0.0738933529</span></span>
+<span><span class="co">#&gt; irf        0.897458694 0.02991139 0.0591360531 0.0134938646</span></span>
+<span><span class="co">#&gt; rdw_sd_fl  0.009206151 0.98656724 0.0035557957 0.0006708088</span></span>
+<span><span class="co">#&gt; macror_pct 0.081193172 0.83495672 0.0002973601 0.0835527516</span></span>
+<span><span class="co">#&gt; rdw        0.010110982 0.95504733 0.0105618779 0.0242798069</span></span>
+<span><span class="co">#&gt; hfr_pct    0.314461245 0.01716073 0.6682284177 0.0001496026</span></span></code></pre></div>
+<p>This suggests that three traits (rdw_sd_fl, macror_pct, pct) are
+explained by latent factor ML2, five traits (mfr_pct, lfr_pct, hlr_p,
+hlr, irf) are explained by ML1, and one trait (hfr_pct) is explained by
+ML3 (67%) and ML1 (31%).</p>
+</div>
+<div class="section level2">
+<h2 id="latent-factor-gwas">Latent factor GWAS<a class="anchor" aria-label="anchor" href="#latent-factor-gwas"></a>
+</h2>
+<p>GWAS of latent factors may be conducted directly by estimating latent
+factor scores from factor analysis, which requires individual-level
+trait measurements in complete data, i.e. all individuals have
+measurements for all traits (no missing values). Then, using
+individual-level genotype data to perform a GWAS of the latent
+factor.</p>
+<p>Alternatively, latent factor GWAS summary statistics may be estimated
+from the observed trait GWAS summary statistics and the observed trait
+covariance matrix; the factor loading matrix is also needed, which is
+estimated using the trait covariance matrix as described in the <a href="#factor-analysis-and-latent-factor-interpretation">factor
+analysis</a> section.</p>
+<p><em>Required data for latent factor GWAS estimation using
+summary-level data</em></p>
+<ol style="list-style-type: decimal">
+<li><p>Factor loading matrix (<em>FAloading</em> in above example),
+which has observed trait names as row names and latent factor names as
+column names.</p></li>
+<li><p>Trait covariance matrix (<em>sel_covY</em> in above example),
+which has observed trait names in row and column names, appearing in the
+same order as the trait names in the rows of FAloading.</p></li>
+<li><p>Observed trait GWAS effect estimates and standard errors,
+(<em>obsgwas</em> is provided as an example for ten traits). This should
+be a list of the P observed trait GWAS data.frames, each data.frame,
+i.e. obsgwas[[i]] is the data.frame for trait i. The observed traits
+must appear in the same order as in covY. Each data.frame has rows
+corresponding to genetic variants and columns of the SNP id, effect
+estimates (beta) and their standard errors, and effect allele
+frequencies. Only variants present for all traits should be included.
+Column names are recommended to be “beta”, “SE”, and “rsID” for
+compatibility with the fine-mapping functions. <strong>All GWAS must
+have the same effect allele before running latentGWAS</strong>. The
+function <strong>flashfmZero::harmoniseGWAS</strong> may be used to
+re-format data.</p></li>
+</ol>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
+<span><span class="va">latent_gwas</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/latentGWAS.html">latentGWAS</a></span><span class="op">(</span>obsGWAS <span class="op">=</span> <span class="va">obsgwas</span>,covY <span class="op">=</span> <span class="va">covY</span>,L <span class="op">=</span> <span class="va">FAloadings</span>, beta_colname<span class="op">=</span><span class="st">"beta"</span>,se_colname<span class="op">=</span><span class="st">"SE"</span>,</span>
+<span>                       snpID_colname<span class="op">=</span><span class="st">"rsID"</span>,EAF <span class="op">=</span> <span class="va">obsgwas</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">EAF</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="fine-mapping">Fine-mapping<a class="anchor" aria-label="anchor" href="#fine-mapping"></a>
+</h2>
+<p>Here we illustrate fine-mapping using latent factors that were
+estimated from the 99 blood cell traits of the INTERVAL study, to
+replicate results from our analyses.</p>
+<p><strong>Required data for fine-mapping</strong></p>
+<p><a href="#example-data">Example data</a> are described in detail
+below. Briefly, all multi-trait functions require:</p>
+<ol style="list-style-type: decimal">
+<li>
+<a href="#smim1-gwas-list-interval-fa25">gwas.list</a>: a list of
+data.frames (one for each trait), with required (minimal) columns:</li>
+</ol>
+<ol style="list-style-type: lower-alpha">
+<li><p><strong>rsID</strong>: (variant ID names - if using the JAM
+functions, variant names must not contain “:” and must start with a
+non-numeric character, see <a href="#notes">Notes</a> for details). All
+rsIDs must be unique, i.e. no duplicate names.</p></li>
+<li><p><strong>beta</strong>: GWAS effect sizes</p></li>
+<li><p><strong>EAF</strong>: effect allele frequency; frequency of
+effect allele that coincides with beta</p></li>
+</ol>
+<p>To assist in harmonising the GWAS summary statistics from all traits
+(same variants for all traits and same effect allele) we provide the
+<strong>harmoniseGWAS</strong> function.</p>
+<ol start="2" style="list-style-type: decimal">
+<li>
+<a href="#smim1-corx">corX</a>: SNP correlation matrix (linkage
+disequilibrium; LD) where row and column names are the same variant ID
+names as in gwas.list, and appear in the same order as in gwas.list.
+<strong>NOTE</strong>: The effect allele coding for beta MUST match with
+the allele coding in corX; either all effect alleles in the GWAS must
+match with the reference allele in corX or all non-effect alleles must
+match with the reference allele in corX (need consistency for
+correlation signs). Where there is a mis-match in alleles between
+gwas.list and corX, flip the variant in gwas.list by setting beta to
+-beta and EAF to 1-EAF at that variant.</li>
+</ol>
+<p>To align the GWAS data with the LD data, we provide the
+<strong>alignGWAS</strong> function.</p>
+<ol start="3" style="list-style-type: decimal">
+<li>
+<a href="#smim1-N">N</a>: a single number that gives the sample size
+of the cohort</li>
+</ol>
+<p>The single-trait functions require the same input, except the GWAS
+argument is <em>gwas</em>, a data.frame as in gwas.list, i.e. gwas has
+the form of gwas.list[[1]].</p>
+<p>Available fine-mapping functions in this package include:</p>
 <ol style="list-style-type: decimal">
 <li><p><a href="#example-of-jamdwithgroups">JAMdwithGroups</a>: for
 single-trait fine-mapping using our JAMdynamic algorithm that adjusts
@@ -132,14 +333,16 @@ with <a href="https://academic.oup.com/bioinformatics/article/32/10/1493/1743040
 integration with any single-trait fine-mapping method that outputs
 multi-SNP model posterior probabilities (see details how <a href="https://jennasimit.github.io/flashfm/articles/flashfm.html#simulation-example" class="external-link">here</a>).</li>
 </ol>
-<p><strong>Notes:</strong></p>
+<div class="section level4">
+<h4 id="notes">Notes<a class="anchor" aria-label="anchor" href="#notes"></a>
+</h4>
 <ol style="list-style-type: decimal">
 <li>SNP names must not contain “:” and must start with a non-numeric
 character, which are requirements of the original JAM algorithm. If SNP
 names are in the form “19:45301088_T_C” change to “chr19_45301088_T_C”.
 This could be done using the following command</li>
 </ol>
-<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="fu">paste0</span>(<span class="st">"chr"</span>, <span class="fu">gsub</span>(<span class="st">":"</span>, <span class="st">"_"</span>, snpnames)</span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">paste0</span>(<span class="st">"chr"</span>, <span class="fu">gsub</span>(<span class="st">":"</span>, <span class="st">"_"</span>, snpnames)</span></code></pre></div>
 <ol start="2" style="list-style-type: decimal">
 <li>The R2BGLiMS library is pre-installed in the flashfmZero R package,
 so no need to install it separately. However, a Java JDK must be
@@ -157,11 +360,12 @@ examples, see the <a href="https://jennasimit.github.io/flashfm/" class="externa
 <a href="https://jennasimit.github.io/MGflashfm/" class="external-link">MGflashfm GitHub
 page</a></p>
 </div>
+</div>
 <div class="section level2">
 <h2 id="example-data">Example Data<a class="anchor" aria-label="anchor" href="#example-data"></a>
 </h2>
 <p>This example data has been extracted from our analyses of the
-INTERVAL cohort. The INTERVAL cohort consists of healthy UK blood donors
+INTERVAL study. The INTERVAL study consists of healthy UK blood donors
 and the original GWAS data are described in <a href="https://doi.org/10.1016/j.cell.2016.10.042" class="external-link">Astle et
 al. (2016)</a> and <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">Akbari et
 al. (2023)</a>.</p>
@@ -188,7 +392,7 @@ below, to indicate the required format.</p>
 <div class="section level3">
 <h3 id="smim1-gwas-list-interval-fa25">SMIM1.gwas.list.interval.fa25<a class="anchor" aria-label="anchor" href="#smim1-gwas-list-interval-fa25"></a>
 </h3>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">SMIM1.gwas.list.interval.fa25</span>,<span class="va">head</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $ML12</span></span>
@@ -221,7 +425,7 @@ below, to indicate the required format.</p>
 <div class="section level3">
 <h3 id="smim1-corx">SMIM1.corX<a class="anchor" aria-label="anchor" href="#smim1-corx"></a>
 </h3>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#library(flashfmZero)</span></span>
 <span><span class="va">SMIM1.corX</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span>,<span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                               chr1_bp3680056_rsidrs56079032</span></span>
@@ -234,19 +438,19 @@ below, to indicate the required format.</p>
 <div class="section level3">
 <h3 id="smim1-n">SMIM1.N<a class="anchor" aria-label="anchor" href="#smim1-n"></a>
 </h3>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co">#library(flashfmZero)</span></span>
 <span><span class="va">SMIM1.N</span></span>
 <span><span class="co">#&gt; [1] 18310</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="illustrations">Illustrations<a class="anchor" aria-label="anchor" href="#illustrations"></a>
+<h2 id="fine-mapping-illustrations">Fine-mapping Illustrations<a class="anchor" aria-label="anchor" href="#fine-mapping-illustrations"></a>
 </h2>
 <div class="section level3">
 <h3 id="example-of-jamdwithgroups">Example of JAMdwithGroups<a class="anchor" aria-label="anchor" href="#example-of-jamdwithgroups"></a>
 </h3>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
 <span><span class="va">save.path.tmp</span> <span class="op">&lt;-</span> <span class="st">"tmpDIR"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">save.path.tmp</span><span class="op">)</span> </span>
@@ -291,12 +495,13 @@ below, to indicate the required format.</p>
 <div class="section level3">
 <h3 id="example-of-multijamd">Example of multiJAMd<a class="anchor" aria-label="anchor" href="#example-of-multijamd"></a>
 </h3>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
 <span><span class="va">save.path.tmp</span> <span class="op">&lt;-</span> <span class="st">"tmpDIR"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">save.path.tmp</span><span class="op">)</span> </span>
-<span><span class="co">#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.</span></span>
-<span><span class="co">#' Set NCORES=no. of traits, if on hpc or Linux, otherwise set NCORES=1 (Mac or Windows local machines).</span></span>
+<span><span class="co">#' NB If the named directory in save.path does not exist, the function will create this save.path (if single directory name) as a sub-folder in the working directory.</span></span>
+<span><span class="co">#' set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), </span></span>
+<span><span class="co">#' but if on Windows/Mac, must use NCORES=1</span></span>
 <span><span class="co">#' </span></span>
 <span><span class="co"># JAM on multiple traits, also outputting SNP groups</span></span>
 <span><span class="va">all.single.traits.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/multiJAMd.html">multiJAMd</a></span><span class="op">(</span>gwas.list <span class="op">=</span> <span class="va">SMIM1.gwas.list.interval.fa25</span>,  </span>
@@ -322,12 +527,13 @@ different arguments are:</p>
 <div class="section level3">
 <h3 id="example-of-flashfmzerowithjamd">Example of FLASHFMZEROwithJAMd<a class="anchor" aria-label="anchor" href="#example-of-flashfmzerowithjamd"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
 <span><span class="va">save.path.tmp</span> <span class="op">&lt;-</span> <span class="st">"tmpDIR"</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">save.path.tmp</span><span class="op">)</span> </span>
-<span><span class="co">#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.</span></span>
-<span><span class="co">#' Set NCORES=no. of traits, if on hpc or Linux, otherwise set NCORES=1 (Mac or Windows local machines).</span></span>
+<span><span class="co">#' NB If the named directory in save.path does not exist, the function will create this save.path (if single directory name) as a sub-folder in the working directory.</span></span>
+<span><span class="co">#' set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), </span></span>
+<span><span class="co">#' but if on Windows/Mac, must use NCORES=1</span></span>
 <span><span class="co">#' </span></span>
 <span><span class="co"># flashfm on multiple traits with zero correlation</span></span>
 <span><span class="va">multi.trait.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/FLASHFMZEROwithJAMd.html">FLASHFMZEROwithJAMd</a></span><span class="op">(</span>gwas.list <span class="op">=</span> <span class="va">SMIM1.gwas.list.interval.fa25</span>, </span>
@@ -357,7 +563,7 @@ the extra arguments are:</p>
 <div class="section level3">
 <h3 id="jamdwithgroups-output">JAMdwithGroups output<a class="anchor" aria-label="anchor" href="#jamdwithgroups-output"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; JAMdwithGroups.out.fa25.single$CS</span></span>
 <span><span class="co">#                                       MPP                           snp                         group</span></span>
 <span><span class="co"># chr1_bp3691528_rsidrs1175550  0.920955014  chr1_bp3691528_rsidrs1175550                             A</span></span>
@@ -365,7 +571,7 @@ the extra arguments are:</p>
 <span><span class="co"># chr1_bp3684954_rsidrs1181870  0.019770459  chr1_bp3684954_rsidrs1181870                             A</span></span>
 <span><span class="co"># chr1_bp3691727_rsidrs1175549  0.015788612  chr1_bp3691727_rsidrs1175549                             A</span></span>
 <span><span class="co"># chr1_bp3691434_rsidrs70940313 0.009034836 chr1_bp3691434_rsidrs70940313 chr1_bp3691434_rsidrs70940313</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; JAMdwithGroups.out.fa25.single$mpp.pp</span></span>
 <span><span class="co"># $MPP</span></span>
 <span><span class="co">#                                       MPP</span></span>
@@ -396,7 +602,7 @@ the extra arguments are:</p>
 <span><span class="co"># A                             0.986431839</span></span>
 <span><span class="co"># chr1_bp3691434_rsidrs70940313 0.009034836</span></span>
 <span><span class="co"># chr1_bp3694796_rsidrs1891934  0.004533324</span></span></code></pre></div>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; JAMdwithGroups.out.fa25.single$snpGroups</span></span>
 <span><span class="co"># $A</span></span>
 <span><span class="co"># [1] "chr1_bp3691727_rsidrs1175549" "chr1_bp3691528_rsidrs1175550" "chr1_bp3687739_rsidrs1175552"</span></span>
@@ -405,7 +611,7 @@ the extra arguments are:</p>
 <div class="section level3">
 <h3 id="multijamd-output">multiJAMd output<a class="anchor" aria-label="anchor" href="#multijamd-output"></a>
 </h3>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; all.single.traits.results</span></span>
 <span><span class="co"># $mpp.pp</span></span>
 <span><span class="co"># $mpp.pp$MPP</span></span>
@@ -616,7 +822,7 @@ the extra arguments are:</p>
 <span><span class="co">#  [7] "chr1_bp3691727_rsidrs1175549"  "chr1_bp3694796_rsidrs1891934"  "chr1_bp3697291_rsidrs2996428" </span></span>
 <span><span class="co"># [10] "chr1_bp3709487_rsidrs7513053"  "chr1_bp3711689_rsidrs6667255"  "chr1_bp3704041_rsidrs7527973" </span></span>
 <span><span class="co"># [13] "chr1_bp3713746_rsidrs6424052"  "chr1_bp3719890_rsidrs6661554"  "chr1_bp3721609_rsidrs12127399"</span></span></code></pre></div>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; all.single.traits.CS99</span></span>
 <span><span class="co"># $fm</span></span>
 <span><span class="co"># $fm[[1]]</span></span>
@@ -669,7 +875,7 @@ the extra arguments are:</p>
 <div class="section level3">
 <h3 id="flashfmzerowithjamd-output">FLASHFMZEROwithJAMd output<a class="anchor" aria-label="anchor" href="#flashfmzerowithjamd-output"></a>
 </h3>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; multi.trait.results</span></span>
 <span><span class="co"># $mpp.pp</span></span>
 <span><span class="co"># $mpp.pp$MPP</span></span>
@@ -810,7 +1016,7 @@ the extra arguments are:</p>
 <span><span class="co">#       A</span></span>
 <span><span class="co"># null 15</span></span>
 <span><span class="co"># 52    1</span></span></code></pre></div>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># &gt; multi.trait.results.CS99</span></span>
 <span><span class="co"># $fm</span></span>
 <span><span class="co"># $fm[[1]]</span></span>

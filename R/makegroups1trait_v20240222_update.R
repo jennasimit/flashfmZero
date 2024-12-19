@@ -12,7 +12,7 @@
 #' @param min.mppi trim snp groups with total MPPI < min.mppi in all diseases; default 0.01
 #' @param minsnpmppi only group snps with total MPPI > minsnpmppi; default 0.01
 #' @param r2.minmerge merge groups with minimum between-group r2 > r2.minmerge; default 0.6
-#' @param NCORES number of cores for parallel computing; recommend NCORES=M if running on hpc, but if on Windows/Mac, use NCORES=1
+#' @param NCORES number of cores for parallel computing; set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), but if on Windows/Mac, must use NCORES=1
 #' @param extra.java.arguments A character string to be passed through to the java command line. E.g. to specify a
 #' different temporary directory by passing "-Djava.io.tmpdir=/Temp".
 #' @return List consisting of two objects: mpp.pp, a list with 4 components giving the SNP-level results (mpp.pp$PP,mpp.pp$MPP) and SNP group level results (mpp.pp$MPPg, mpp.pp$PPg); and snpGroups, 

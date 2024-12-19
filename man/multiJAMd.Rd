@@ -42,7 +42,7 @@ if trait names are provided for the M data.frames, these trait names are given i
 
 \item{r2.minmerge}{merge groups with minimum between-group r2 > r2.minmerge; default 0.6}
 
-\item{NCORES}{number of cores for parallel computing; recommend NCORES=M if running on hpc, but if on Windows/Mac, use NCORES=1}
+\item{NCORES}{number of cores for parallel computing; set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), but if on Windows/Mac, must use NCORES=1}
 
 \item{extra.java.arguments}{A character string to be passed through to the java command line. E.g. to specify a
 different temporary directory by passing "-Djava.io.tmpdir=/Temp".}

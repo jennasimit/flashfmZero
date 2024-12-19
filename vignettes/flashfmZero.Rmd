@@ -16,21 +16,124 @@ knitr::opts_chunk$set(
 
 # Introduction
 
-*flashfmZero* (flexible and shared information fine-mapping of uncorrelated quantitative traits) is an R package to simultaneously fine-map genetic associations for multiple (with zero correlation) quantitative traits. It extends on the multi-trait fine-mapping framework of [flashfm](https://www.nature.com/articles/s41467-021-26364-y).
+*flashfmZero* (flexible and shared information fine-mapping of uncorrelated quantitative traits) is an R package to **simultaneously fine-map genetic associations for multiple (with zero correlation) quantitative traits**. It extends on the multi-trait fine-mapping framework of [flashfm](https://www.nature.com/articles/s41467-021-26364-y). In addition, it provides an approach to **estimate latent factor GWAS summary statistics using only summary level data** - observed trait GWAS summary statistics, observed trait covariance matrix.
 
 FlashfmZero is a computationally efficient approach to simultaneously fine-map signals in any number of uncorrelated quantitative traits (i.e. zero correlation), as may result from latent factors estimated from factor analysis using a varimax rotation. For correlated traits, the original flashfm multi-trait fine-mapping method should be used, which is also available in this package for convenience. Flashfm and flashfmZero output trait-specific results, leveraging information between traits; for each trait, credible sets, SNP marginal posterior probabilities of causality (MPP), and multi-SNP model posterior probabilities (PP) are output. 
 
 Any single-trait fine-mapping method that outputs model posterior probabilities may be integrated with flashfmZero and flashfm, and here we provide wrapper functions that integrate our expanded version of [JAM](https://onlinelibrary.wiley.com/doi/full/10.1002/gepi.21953). A wrapper function for flashfm with [FINEMAP](https://academic.oup.com/bioinformatics/article/32/10/1493/1743040), FLASHFMwithFINEMAP, is available here with examples in the [flashfm R package](https://jennasimit.github.io/flashfm/), where an overview of flashfm multi-trait fine-mapping is provided. 
 
+Example scripts that only use observed trait summary-level data in our analysis of the INTERVAL study's blood cell traits and NMR metabolic traits are available at:
+
+***XXX***
+***YYY***
 
 For more details, please see:
 
 F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2024). 
 Improved fine-mapping resolution of high-dimensional traits through multivariate analyses of latent factors. BioRxiv
  
+**Estimating latent factor GWAS summary statistics from observed trait GWAS summary statistics** 
+
+We recommend removing any traits that have measurements from fewer than half of the participants in the study. Factor analysis estimates latent factors from the covariance matrix of the observed traits, but when there are many highly correlated latent factors (e.g. multiple pairs of traits with correlation > 0.99, as in the NMR data from the INTERVAL study) it is not computationally possible. In such cases, we recommend removing traits one-by-one based on the number of high-correlations that they have, as illustrated in ***YYY***
+
+Example code (with data provided in this package) are described for:
+
+1. [Factor Analysis and interpretation of latent factors](#factor-analysis-and-latent-factor-interpretation)
+
+2. [Latent factor GWAS summary statistics estimation using summary-level data](#latent-factor-gwas)
+
+3. [Single and multi-trait fine-mapping](#fine-mapping)
+
+# Factor analysis and latent factor interpretation
+
+*Factor analysis* is used to estimate the factor loadings for the latent factors that explain variation in the observed traits and is carried out using functions from the *psych* R library. It only requires the *trait covariance matrix*, which may be calculated from the individual-level trait data, allowing for missing trait measurements, i.e. each trait covariance is calculated from pairwise complete trait measurements. Alternatively, the trait covariance could be estimated from GWAS summary statistics using a method like cross-trait LD score regression.
+
+Below we illustrate how to run factor analysis using 10 blood cell traits from the INTERVAL study; this is a subset of the 99 blood cell traits that are available. The INTERVAL study consists of healthy UK blood donors and the original GWAS data are described in [Astle et al. (2016)](https://doi.org/10.1016/j.cell.2016.10.042)
+and [Akbari et al. (2023)](https://doi.org/10.1038/s41467-023-40679-y).
+
+The trait covariance matrix for the 10 selected traits was calculated using pairwise complete observations and is stored as *sel_covY* in this package.
+
+```{r,eval=FALSE} 
+library(psych)
+sel_covY <- cov(Y, use="pairwise.complete.obs", method='pearson') # Y is an NxP matrix of P traits (allowing for missing values) measured in a sample of N individuals
+# alternatively, covY could be estimated from GWAS summary statistics using a method like cross-trait LD score regression
+```
+
+The trait covariance is then used to estimate the number of latent factors using the psych::fa.parallel function, with arguments fa="fa" for factor analysis, fm="ml" for maximum likelihood estimation, and rotate="varimax" for a varimax rotation, which ensures that the latent factors have zero correlation. The fa.parallel function will produce a scree plot to help determine the number of factor and will suggest the number of factors, which is printed to the screen and stored in the "nfact" list component of the fa.parallel output.
+
+After estimating the number of latent factors, factor analysis is run using psych::fa and specifying the number of latent factors, nfact, fm="ml" for maximum likelihood estimation, and rotate="varimax" for a varimax rotation. The factor loadings are stored in the loadings component of the fa output, and we provide it in this package as *faYloading*.
+
+```{r,eval=FALSE}
+N <- 43059 # INTERVAL study sample size
+facheck <- psych::fa.parallel(sel_covY, fm="ml", n.obs=N,fa="fa",show.legend=F,main="") # select number of factors
+faY <- psych::fa(r=sel_covY, nfactors=facheck$nfact, fm="ml", rotate="varimax") # run factor analysis
+faYloading <- as.matrix(faY$loadings) # factor loadings matrix available in this package for convenience
+```
+
+We provide the function *factor_contributions* that helps in interpreting latent factors. This function takes the factor loading matrix as input and returns the latent factor contributions (re-scaled factor loadings) and factor loading matrix with observed traits ordered by maximum contributing latent factor. The contribution of latent factor j to observed trait i indicates the proportion of variance in the observed trait that is explained by the latent factor. Grouping observed traits by common highest contributing latent factor helps in understanding which groups of observed traits have common underlying latent factors.
+
+```{r,eval=TRUE}
+library(flashfmZero)
+latent_terms <- flashfmZero::factor_contributions(faYloading) 
+rescaledFAloading <- latent_terms[[1]] # rows are observed traits and columns are latent factors
+FAloading <- latent_terms[[2]]
+sel_covY <- sel_covY[rownames(FAloading),rownames(FAloading)] # reorder covY so traits are in same order as for FAloading
+```
+
+In our example data of ten traits, four latent factors are recommended and the contributions matrix is:
+```{r,eval=TRUE}
+print(rescaledFAloading)
+```
+This suggests that three traits (rdw_sd_fl, macror_pct, pct) are explained by latent factor ML2, five traits (mfr_pct, lfr_pct, hlr_p, hlr, irf) are explained by ML1, and one trait (hfr_pct) is explained by ML3 (67%) and ML1 (31%).
 
 
-Available in this package are:
+# Latent factor GWAS
+
+GWAS of latent factors may be conducted directly by estimating latent factor scores from factor analysis, which requires individual-level trait measurements in complete data, i.e. all individuals have measurements for all traits (no missing values). Then, using individual-level genotype data to perform a GWAS of the latent factor.
+
+Alternatively, latent factor GWAS summary statistics may be estimated from the observed trait GWAS summary statistics and the observed trait covariance matrix; the factor loading matrix is also needed, which is estimated using the trait covariance matrix as described in the [factor analysis](#factor-analysis-and-latent-factor-interpretation) section.
+
+*Required data for latent factor GWAS estimation using summary-level data* 
+
+1. Factor loading matrix (*FAloading* in above example), which has observed trait names as row names and latent factor names as column names.
+
+2. Trait covariance matrix (*sel_covY* in above example), which has observed trait names in row and column names, appearing in the same order as the trait names in the rows of FAloading.
+
+3. Observed trait GWAS effect estimates and standard errors, (*obsgwas* is provided as an example for ten traits). This should be a list of the P observed trait GWAS data.frames, each data.frame, i.e. obsgwas[[i]] is the data.frame for trait i. The observed traits must appear in the same order as in covY. Each data.frame has rows corresponding to genetic variants and columns of the SNP id, effect estimates (beta) and their standard errors, and effect allele frequencies. Only variants present for all traits should be included. Column names are recommended to be "beta", "SE", and "rsID" for compatibility with the fine-mapping functions. **All GWAS must have the same effect allele before running latentGWAS**. The function **flashfmZero::harmoniseGWAS** may be used to re-format data. 
+
+
+```{r,eval=FALSE} 
+library(flashfmZero)
+latent_gwas <- latentGWAS(obsGWAS = obsgwas,covY = covY,L = FAloadings, beta_colname="beta",se_colname="SE",
+                       snpID_colname="rsID",EAF = obsgwas[[1]]$EAF)
+```
+
+# Fine-mapping
+Here we illustrate fine-mapping using latent factors that were estimated from the 99 blood cell traits of the INTERVAL study, to replicate results from our analyses.
+
+**Required data for fine-mapping**
+
+[Example data](#example-data) are described in detail below. Briefly, all multi-trait functions require:
+
+1. [gwas.list](#smim1-gwas-list-interval-fa25): a list of data.frames (one for each trait), with required (minimal) columns: 
+
+(a) **rsID**: (variant ID names - if using the JAM functions, variant names must not contain ":" and must start with a non-numeric character, see [Notes](#notes) for details). All rsIDs must be unique, i.e. no duplicate names. 
+
+(b) **beta**: GWAS effect sizes 
+
+(c) **EAF**: effect allele frequency; frequency of effect allele that coincides with beta 
+
+To assist in harmonising the GWAS summary statistics from all traits (same variants for all traits and same effect allele) we provide the **harmoniseGWAS** function.
+
+2. [corX](#smim1-corx): SNP correlation matrix (linkage disequilibrium; LD) where row and column names are the same variant ID names as in gwas.list, and appear in the same order as in gwas.list. **NOTE**: The effect allele coding for beta MUST match with the allele coding in corX; either all effect alleles in the GWAS must match with the reference allele in corX or all non-effect alleles must match with the reference allele in corX (need consistency for correlation signs). Where there is a mis-match in alleles between gwas.list and corX, flip the variant in gwas.list by setting beta to -beta and EAF to 1-EAF at that variant.
+
+To align the GWAS data with the LD data, we provide the **alignGWAS** function.
+
+3. [N](#smim1-N): a single number that gives the sample size of the cohort
+
+The single-trait functions require the same input, except the GWAS argument is *gwas*, a data.frame as in gwas.list, i.e. gwas has the form of gwas.list[[1]].
+
+Available fine-mapping functions in this package include:
 
 1. [JAMdwithGroups](#example-of-jamdwithgroups): for single-trait fine-mapping using our JAMdynamic algorithm that adjusts the maximum number of causal variants, according to the data, so that out-of-sample reference panels, such as from the 1000 Genomes Project, may be used; output includes SNP groups that indicate distinct causal variants.
 
@@ -45,7 +148,7 @@ For use with pre-calculated single-trait fine-mapping results, use the function 
 
 5. All flashfm multi-trait fine-mapping functions (from https://jennasimit.github.io/flashfm/, https://jennasimit.github.io/MGflashfm/), allowing integration with any single-trait fine-mapping method that outputs multi-SNP model posterior probabilities (see details how [here](https://jennasimit.github.io/flashfm/articles/flashfm.html#simulation-example)).
 
-**Notes:** 
+### Notes
 
 1. SNP names must not contain ":" and must start with a non-numeric character, which are requirements of the original JAM algorithm.
 If SNP names are in the form "19:45301088_T_C" change to "chr19_45301088_T_C". 
@@ -65,7 +168,7 @@ For an overview of the flashfm and MGflashfm R packages and further examples, se
 
 # Example Data
 
-This example data has been extracted from our analyses of the INTERVAL cohort. The INTERVAL cohort consists of healthy UK blood donors and the original GWAS data are described in [Astle et al. (2016)](https://doi.org/10.1016/j.cell.2016.10.042)
+This example data has been extracted from our analyses of the INTERVAL study. The INTERVAL study consists of healthy UK blood donors and the original GWAS data are described in [Astle et al. (2016)](https://doi.org/10.1016/j.cell.2016.10.042)
 and [Akbari et al. (2023)](https://doi.org/10.1038/s41467-023-40679-y).
 
 As data are not missing at random, we focus on 18,310 participants who have all 99 blood cell trait measured, and run a factor analysis with varimax rotation to estimate 25 latent factors (based on scree plot) that are uncorrelated (analysis scripts available at [https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis](https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis)). Upon running GWAS on these 25 latent factors and the 99 raw blood cell traits, we identified three latent factors and eight raw blood cell traits that have genome-wide signals in the gene *SMIM1*. All of these traits are related to red blood cells. 
@@ -94,7 +197,7 @@ SMIM1.N
 ```
 
 
-# Illustrations
+# Fine-mapping Illustrations
 ## Example of JAMdwithGroups
 ```{r,eval=FALSE} 
 library(flashfmZero)
@@ -146,8 +249,9 @@ Ouput can be viewed [here](#jamdwithgroups-output).
 library(flashfmZero)
 save.path.tmp <- "tmpDIR"
 dir.create(save.path.tmp) 
-#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.
-#' Set NCORES=no. of traits, if on hpc or Linux, otherwise set NCORES=1 (Mac or Windows local machines).
+#' NB If the named directory in save.path does not exist, the function will create this save.path (if single directory name) as a sub-folder in the working directory.
+#' set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), 
+#' but if on Windows/Mac, must use NCORES=1
 #' 
 # JAM on multiple traits, also outputting SNP groups
 all.single.traits.results <- multiJAMd(gwas.list = SMIM1.gwas.list.interval.fa25,  
@@ -177,8 +281,9 @@ Ouput can be viewed [here](#multijamd-output).
 library(flashfmZero)
 save.path.tmp <- "tmpDIR"
 dir.create(save.path.tmp) 
-#' NB If a directory is not provided in save.path, the function will create this save.path as a sub-folder in the working directory.
-#' Set NCORES=no. of traits, if on hpc or Linux, otherwise set NCORES=1 (Mac or Windows local machines).
+#' NB If the named directory in save.path does not exist, the function will create this save.path (if single directory name) as a sub-folder in the working directory.
+#' set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), 
+#' but if on Windows/Mac, must use NCORES=1
 #' 
 # flashfm on multiple traits with zero correlation
 multi.trait.results <- FLASHFMZEROwithJAMd(gwas.list = SMIM1.gwas.list.interval.fa25, 

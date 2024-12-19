@@ -16,7 +16,7 @@ This could be obtained from flashfm.input or JAMexpanded.multi.}
 
 \item{maxmod}{maximum number of top models to output; NULL by default}
 
-\item{NCORES}{number of cores for parallel computing; recommend NCORES=M, but if on Windows, use NCORES=1}
+\item{NCORES}{number of cores for parallel computing; set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), but if on Windows/Mac, must use NCORES=1}
 }
 \value{
 List consisting of PP: marginal PP for models and MPP: marginal PP of SNP inclusion

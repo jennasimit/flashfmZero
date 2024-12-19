@@ -3,7 +3,7 @@
 #' @title Wrapper for flashfm Multi-Trait Fine-Mapping with JAM (when trait correlation is zero)  - this is the dynamic number of max causal variant version
 #' @param gwas.list List of M data.frame objects, where M is the number of traits; gwas.list\[\[i\]\] is a data.frame for  trait i with 3 columns named: rsID, beta, EAF
 #' @param corX SNP correlation matrix  
-#' @param N Vector of length M; Nall\[i\] is the (effective) sample size for trait i
+#' @param N sample size 
 #' @param save.path Path to save JAM output files; tmp files and could delete these later e.g. save.path=paste0(DIRout,"/tmpJAM/region1").
 #' @param TOdds target odds of no sharing to sharing; default is 1
 #' @param cpp cumulative posterior probability threshold for selecting top models; default 0.99
@@ -114,7 +114,7 @@ marginalpp0 <- function(STR, PP, mbeta, kappa, N,nsnps,NCORES) {
 #' @param TOdds Vector of target odds of no sharing to sharing
 #' @param cpp cumulative posterior probability threshold for selecting top models; this is ignored when maxmod is spespecified
 #' @param maxmod maximum number of top models to output; NULL by default
-#' @param NCORES number of cores for parallel computing; recommend NCORES=M, but if on Windows, use NCORES=1
+#' @param NCORES number of cores for parallel computing; set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), but if on Windows/Mac, must use NCORES=1
 #' @return List consisting of PP: marginal PP for models and MPP: marginal PP of SNP inclusion
 #' @export
 #' @author Jenn Asimit
@@ -349,7 +349,8 @@ calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,NCORES) {
 pre.ppadj <- function(i,qns,Q) {
 	    
 	    qn  <- paste0("Q",i)
-	 	ind <- grep(qn,qns,fixed=TRUE)
+#	 	ind <- grep(qn,qns,fixed=TRUE) # not correct if 10 or more traits
+		ind <- which(qns == qn)
 	 	whO <- ind[which(ind %% 2 == 1)] # odd indices so first list component 	 
 	 	whE <- ind[which(ind %% 2 == 0)]
 	 	keep <- NULL
