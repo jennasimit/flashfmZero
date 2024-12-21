@@ -4,6 +4,12 @@
     <loc>/404.html</loc>
   </url>
   <url>
+    <loc>/articles/Example_Part1.html</loc>
+  </url>
+  <url>
+    <loc>/articles/Example_Part2.html</loc>
+  </url>
+  <url>
     <loc>/articles/flashfmZero.html</loc>
   </url>
   <url>
@@ -83,6 +89,12 @@
   </url>
   <url>
     <loc>/reference/JAMexpandedCor.multi2.html</loc>
+  </url>
+  <url>
+    <loc>/reference/LDqc.html</loc>
+  </url>
+  <url>
+    <loc>/reference/LoadingTerm.html</loc>
   </url>
   <url>
     <loc>/reference/ManhattanPlot.html</loc>
@@ -226,6 +238,12 @@
     <loc>/reference/expand.mod.html</loc>
   </url>
   <url>
+    <loc>/reference/faYloading.html</loc>
+  </url>
+  <url>
+    <loc>/reference/factor_contributions.html</loc>
+  </url>
+  <url>
     <loc>/reference/finemap.html</loc>
   </url>
   <url>
@@ -256,7 +274,19 @@
     <loc>/reference/groups-subset.html</loc>
   </url>
   <url>
+    <loc>/reference/harmoniseGWAS.html</loc>
+  </url>
+  <url>
     <loc>/reference/index.html</loc>
+  </url>
+  <url>
+    <loc>/reference/latentBeta.html</loc>
+  </url>
+  <url>
+    <loc>/reference/latentBetaSE.html</loc>
+  </url>
+  <url>
+    <loc>/reference/latentGWAS.html</loc>
   </url>
   <url>
     <loc>/reference/logsum.html</loc>
@@ -311,6 +341,12 @@
   </url>
   <url>
     <loc>/reference/ppnsnp-class.html</loc>
+  </url>
+  <url>
+    <loc>/reference/sel_covY.html</loc>
+  </url>
+  <url>
+    <loc>/reference/sel_obsgwas.html</loc>
   </url>
   <url>
     <loc>/reference/show-methods.html</loc>

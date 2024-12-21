@@ -28,6 +28,19 @@
 <li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Articles
+     
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu"><li>
+      <a href="../articles/Example_Part1.html">Estimation of latent factors</a>
+    </li>
+    <li>
+      <a href="../articles/Example_Part2.html">Latent factor GWAS and fine-mapping</a>
+    </li>
+  </ul></li>
       </ul><ul class="nav navbar-nav navbar-right"></ul></div><!--/.nav-collapse -->
   </div><!--/.container -->
 </div><!--/.navbar -->
@@ -140,6 +153,14 @@ This version starts at a low upper bound for max causal variants and decides on 
         <td><p>Expanded version of JAM (a single-trait fine-mapping approach) that first runs on thinned SNPs and then expands models on tag SNPs; this can run independently on multiple traits
 This version is more stable than JAMexpandedCor.multi, but slower, so is run only if JAMexpandedCor.multi fails</p></td>
       </tr><tr><td>
+          <p><code><a href="LDqc.html">LDqc()</a></code> </p>
+        </td>
+        <td><p>Quality control of dosage genotype matrix prior to LD calculation</p></td>
+      </tr><tr><td>
+          <p><code><a href="LoadingTerm.html">LoadingTerm()</a></code> </p>
+        </td>
+        <td><p>GWAS for latent factors at one variant using observed trait GWAS summary statistics</p></td>
+      </tr><tr><td>
           <p><code><a href="ManhattanPlot.html">ManhattanPlot()</a></code> </p>
         </td>
         <td><p>Manhattan Plot</p></td>
@@ -232,7 +253,7 @@ and <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">A
       </tr><tr><td>
           <p><code><a href="alignGWAS.html">alignGWAS()</a></code> </p>
         </td>
-        <td><p>Flip GWAS variants to align with reference correlation matrix</p></td>
+        <td><p>Flip GWAS variants to align with SNP correlation matrix (LD) from reference panel or in-sample</p></td>
       </tr><tr><td>
           <p><code><a href="allC12.html">allC12()</a></code> </p>
         </td>
@@ -340,6 +361,18 @@ of confounders for the conjugate models.</p></td>
         </td>
         <td><p>internal function for expanding models by tag SNPs in JAMexpanded.multi</p></td>
       </tr><tr><td>
+          <p><code><a href="faYloading.html">faYloading</a></code> </p>
+        </td>
+        <td><p>Factor loading matrix for four latent factors estimated from 10 blood cell traits of
+the INTERVAL data, consisting of 43,059 participants.
+For the factor analysis, the covariance matrix was calculated using pair-wise complete data,
+Original INTERVAL GWAS data are available in <a href="https://doi.org/10.1016/j.cell.2016.10.042" class="external-link">Astle et al. (2016)</a>
+and <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">Akbari et al. (2023)</a></p></td>
+      </tr><tr><td>
+          <p><code><a href="factor_contributions.html">factor_contributions()</a></code> </p>
+        </td>
+        <td><p>Re-scale factor loadings to get their contributions and output factor loadings and contributions matrices with observed traits ordered by maximum contributing latent factor</p></td>
+      </tr><tr><td>
           <p><code><a href="finemap.html">finemap()</a></code> </p>
         </td>
         <td><p>Wrapper to run FINEMAP  (Benner et al. 2016) in R</p></td>
@@ -380,6 +413,22 @@ defined by their mutual LD</p></td>
           <p><code><a href="groups-subset.html">tagsof()</a></code> <code><a href="groups-subset.html">taggedby()</a></code> <code><a href="groups-subset.html">`[`(<i>&lt;groups&gt;</i>,<i>&lt;character&gt;</i>,<i>&lt;missing&gt;</i>,<i>&lt;missing&gt;</i>)</a></code> <code><a href="groups-subset.html">`[`(<i>&lt;groups&gt;</i>,<i>&lt;numeric&gt;</i>,<i>&lt;missing&gt;</i>,<i>&lt;missing&gt;</i>)</a></code> <code><a href="groups-subset.html">`[`(<i>&lt;groups&gt;</i>,<i>&lt;logical&gt;</i>,<i>&lt;missing&gt;</i>,<i>&lt;missing&gt;</i>)</a></code> <code><a href="groups-subset.html">`[`(<i>&lt;tags&gt;</i>,<i>&lt;character&gt;</i>,<i>&lt;missing&gt;</i>,<i>&lt;missing&gt;</i>)</a></code> <code><a href="groups-subset.html">`[[`(<i>&lt;groups&gt;</i>,<i>&lt;numeric&gt;</i>)</a></code> <code><a href="groups-subset.html">`[[`(<i>&lt;groups&gt;</i>,<i>&lt;logical&gt;</i>)</a></code> <code><a href="groups-subset.html">`[[`(<i>&lt;groups&gt;</i>,<i>&lt;character&gt;</i>)</a></code> </p>
         </td>
         <td><p><code>tagsof</code> shows tags for a named character vector of SNPs</p></td>
+      </tr><tr><td>
+          <p><code><a href="harmoniseGWAS.html">harmoniseGWAS()</a></code> </p>
+        </td>
+        <td><p>Harmonise list of GWAS data to have same variants, same effect allele, and to remove duplicate snps</p></td>
+      </tr><tr><td>
+          <p><code><a href="latentBeta.html">latentBeta()</a></code> </p>
+        </td>
+        <td><p>GWAS effect estimates for latent factors at one variant using observed trait GWAS summary statistics</p></td>
+      </tr><tr><td>
+          <p><code><a href="latentBetaSE.html">latentBetaSE()</a></code> </p>
+        </td>
+        <td><p>GWAS effect estimate standard errors for latent factors at one variant using observed trait GWAS summary statistics</p></td>
+      </tr><tr><td>
+          <p><code><a href="latentGWAS.html">latentGWAS()</a></code> </p>
+        </td>
+        <td><p>GWAS for latent factors at one variant using observed trait GWAS summary statistics</p></td>
       </tr><tr><td>
           <p><code><a href="logsum.html">logsum()</a></code> </p>
         </td>
@@ -452,6 +501,20 @@ defined by their mutual LD</p></td>
           <p><code><a href="ppnsnp-class.html">ppnsnp-class</a></code> </p>
         </td>
         <td><p>Class to hold results of pp.nsnp</p></td>
+      </tr><tr><td>
+          <p><code><a href="sel_covY.html">sel_covY</a></code> </p>
+        </td>
+        <td><p>Trait covariance matrix for 10 blood cell traits from the INTERVAL data, consisting of 43,059 participants.
+Covariance was calculated using pair-wise complete data, i.e. some individuals have missing trait measurements.
+Original INTERVAL GWAS data are available in <a href="https://doi.org/10.1016/j.cell.2016.10.042" class="external-link">Astle et al. (2016)</a>
+and <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">Akbari et al. (2023)</a></p></td>
+      </tr><tr><td>
+          <p><code><a href="sel_obsgwas.html">sel_obsgwas</a></code> </p>
+        </td>
+        <td><p>List of GWAS for 10 blood cell traits from the INTERVAL data, consisting of 43,059 participants.
+Covariance was calculated using pair-wise complete data, i.e. some individuals have missing trait measurements.
+Original INTERVAL GWAS data are available in <a href="https://doi.org/10.1016/j.cell.2016.10.042" class="external-link">Astle et al. (2016)</a>
+and <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">Akbari et al. (2023)</a></p></td>
       </tr><tr><td>
           <p><code><a href="show-methods.html">show(<i>&lt;snpmod&gt;</i>)</a></code> <code><a href="show-methods.html">show(<i>&lt;snppicker&gt;</i>)</a></code> <code><a href="show-methods.html">show(<i>&lt;ppnsnp&gt;</i>)</a></code> <code><a href="show-methods.html">show(<i>&lt;tags&gt;</i>)</a></code> <code><a href="show-methods.html">show(<i>&lt;groups&gt;</i>)</a></code> </p>
         </td>

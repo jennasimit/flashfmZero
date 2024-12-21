@@ -11,17 +11,14 @@
 FlashfmZero is a computationally efficient approach to **jointly
 fine-map signals in any number of uncorrelated quantitative traits**
 (i.e. zero correlation), as may result from latent traits estimated from
-factor analysis using a varimax rotation.
-
-For correlated traits, the original
-[flashfm](https://www.nature.com/articles/s41467-021-26364-y)
+factor analysis using a varimax rotation. For correlated traits, the
+original [flashfm](https://www.nature.com/articles/s41467-021-26364-y)
 multi-trait fine-mapping method should be used and cited, which is
-available in this package for convenience.
-
-Flashfm and flashfmZero output trait-specific results,leveraging
-information between traits; for each trait, credible sets, SNP marginal
-posterior probabilities of causality (MPP), and multi-SNP model
-posterior probabilities (PP) are output.
+available in this package for convenience. Flashfm and flashfmZero
+output trait-specific results,leveraging information between traits; for
+each trait, credible sets, SNP marginal posterior probabilities of
+causality (MPP), and multi-SNP model posterior probabilities (PP) are
+output.
 
 We also provide an approach to **estimate latent factor GWAS summary
 statistics using only summary level data** - observed trait GWAS summary
@@ -36,11 +33,28 @@ analysis of high-dimensional traits.
 
 Website available at: <https://jennasimit.github.io/flashfmZero/>
 
-We have applied these methods to GWAS results from 99 raw blood cell
-traits and their 25 latent factors in the [INTERVAL
-cohort](https://doi.org/10.1186/1745-6215-15-363). Our analysis scripts
-are available here:
+Example annotated scripts that only use observed trait summary-level
+data in our analysis of the INTERVAL study’s NMR metabolic traits
+([Karjalainen et
+al. 2024](https://www.nature.com/articles/s41586-024-07148-y)) are
+available on the flashfmZero website in the article tabs. These scripts
+(with minor modifications) were also used in our analysis of 99 blood
+cell traits from the INTERVAL study ([Astle et
+al. 2016](https://doi.org/10.1016/j.cell.2016.10.042), [Akbari et
+al. 2023](https://doi.org/10.1038/s41467-023-40679-y)).
 
+See [Estimation of latent
+factors](https://jennasimit.github.io/FlashfmZero/articles/Example_Part1.html)
+and [Latent factor GWAS and
+fine-mapping](https://jennasimit.github.io/FlashfmZero/articles/Example_Part2.html)
+for annotated example R scripts that use summary-level data and are
+broadly applicable to other GWAS data.
+
+For proof of principle, we have applied these methods to GWAS results
+from 99 raw blood cell traits and their 25 latent factors, derived from
+complete individual-level data, in the [INTERVAL
+study](https://doi.org/10.1186/1745-6215-15-363). These analysis scripts
+are available here:
 <https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis>
 
 ## System Requirements
