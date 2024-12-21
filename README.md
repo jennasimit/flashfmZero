@@ -44,9 +44,9 @@ al. 2016](https://doi.org/10.1016/j.cell.2016.10.042), [Akbari et
 al. 2023](https://doi.org/10.1038/s41467-023-40679-y)).
 
 See [Estimation of latent
-factors](https://jennasimit.github.io/FlashfmZero/articles/Example_Part1.html)
+factors](https://jennasimit.github.io/flashfmZero/articles/Example_Part1.html)
 and [Latent factor GWAS and
-fine-mapping](https://jennasimit.github.io/FlashfmZero/articles/Example_Part2.html)
+fine-mapping](https://jennasimit.github.io/flashfmZero/articles/Example_Part2.html)
 for annotated example R scripts that use summary-level data and are
 broadly applicable to other GWAS data.
 
