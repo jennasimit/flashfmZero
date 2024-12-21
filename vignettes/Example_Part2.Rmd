@@ -1,0 +1,362 @@
+---
+title: "Latent factor GWAS and fine-mapping"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Example_Part2}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+Here we provide an annotated script for 
+
+1. Estimation of latent factor GWAS summary statistics from observed trait GWAS summary statistics of NMR metabolites from the INTERVAL study, but it is broadly applicable to other data sets. This includes the crucial step of harmonising GWAS to have the same variants present in all GWAS and for all GWAS to have the same effect alleles at each variant. 
+
+2. Identification of latent factor signals and linked observed traits with signals, followed by fine-mapping
+
+This script assumes that the user has created a file "region_list.tsv" containing a list of regions with columns having names "CHR", "START", "END", and each row gives the region's chromosome and start and end positions in base-pair units.
+For example, in our NMR analysis, we created 1MB regions that were centered around lead SNPs from the observed trait GWAS.
+
+# Required R libraries and input
+```{r,eval=FALSE} 
+library(bigsnpr)
+library(vroom)
+library(propagate)
+library(Rsamtools)
+library(tidyverse)
+library(flashfmZero)
+
+# directory to save fine-mapping results
+file_FMresults <- sprintf("output/%d.Rdata",array_index)
+
+ # directory to save temporary intermediate files - can delete later
+OUTPUT_DIR="output/"
+save.path=sprintf("%stmpDIR",OUTPUT_DIR)
+
+
+## Required input files:
+
+# Trait_cov.csv: trait covariance matrix for the observed traits, with traits listed in row and column names
+covY <- read.csv("Trait_cov.csv",row.names=1) # trait covariance matrix 
+
+# region_list.tsv: regions for fine-mapping, with columns having names "CHR", "START", "END", and each row gives the region's chromosome and start and end positions in base-pair units
+region_list<-read_tsv("region_list.tsv",col_names=TRUE)
+regions <- GRanges(seqnames = region_list$CHR , ranges = IRanges(start = region_list$START, end = region_list$END))
+chromosome<-as.character(seqnames(regions[array_index]))
+
+# Factor_loading_matrix.csv: factor loading matrix 
+FAloadings <- read.csv("Factor_loading_matrix.csv",row.names=1) # factor loadings with factor names in columns and observed traits in row names
+
+# Re-scaled-Factor_loading_matrix.csv: re-scaled factor laoding matrix, i.e contributions matrix with factor names in columns and observed traits in row names
+rescaledFAloadings <- read.csv("Re-scaled-Factor_loading_matrix.csv",row.names=1) 
+
+# observed trait GWAS summary statistics
+SUM_STAT_DIR="results/metabolomics/nmr/raw_results_tabixd/nmr"
+
+
+# LD matrix for region - here bgen files are used
+GENO_DIR="data/interval_imputed_bgen_layout2"
+bgenfiles = sprintf("%s/impute_%s_interval_l2_8bit.bgen",GENO_DIR, chromosome)
+backingfile = sprintf("%s/lipid/bigSNP/%d",OUTPUT_DIR,array_index)
+
+# sample size of study
+N <- 40849
+```
+
+
+# Harmonise GWAS data from observed traits
+
+```{r,eval=FALSE} 
+# Specify which row of the "region_list.tsv" file to select region for analysis 
+array_index <- as.integer(Sys.getenv("SLURM_ARRAY_TASK_ID")) # region number as provided by job array submission on hpc
+
+phenotype_list <- rownames(covY) # trait names
+P<-length(phenotype_list) # number of traits
+
+# Read in GWAS summary statistics 
+obsgwas <- vector("list", P)
+for(i in 1:P) {
+	print(i)
+	phenotype<-phenotype_list[i]
+	tabix<-TabixFile(sprintf("%s/%s/%s_chr%s_imputed.gz", SUM_STAT_DIR, phenotype, phenotype, chromosome))
+	result<-scanTabix(tabix, param = regions[array_index])[[1]]
+	result_tibble <- as_tibble(do.call(rbind, stringr::str_split(result, "\t")),  .name_repair = "minimal")
+	colnames(result_tibble)<-c("SNP","CHR","BP","GENPOS","ALLELE1","ALLELE0","A1FREQ","INFO","BETA","SE","P_BOLT_LMM_INF","P_BOLT_LMM")
+	result_tibble$rsID<-sprintf("%s_%s", result_tibble$CHR, result_tibble$BP) # no alleles in snp ids in case need to flip
+	obsgwas[[i]]<-as.data.frame(result_tibble)
+}
+names(obsgwas) <- phenotype_list
+
+# Harmonise so all traits have the same variants and effect alleles, and remove duplicates 
+# In this example, the GWAS files are in the BOLT-LMM format, but the code is flexible to other column names
+# Specify your column that contains your effect estimates in the beta_colname argument, effect allele frequency column name in EAfreq_colname, p-value column name in pvalue_colname, effect allele column name in EA_colname, and non-effect allele column name in NEA_colname.
+# Specify the minimum MAF and minimum INFO score in minMAF and minINFO. Defaults are minMAF=0.005,minINFO=0.4.
+# The output GWAS will have column names "beta", "SE", "rsID", and "EAF", for the effect estimates and their standard errors, variant IDs, and effect allele frequencies. These names are needed to fun the fine-mapping functions.
+ooo <- harmoniseGWAS(obsgwas,minMAF=0.005,minINFO=0.4,beta_colname="BETA",EAfreq_colname="A1FREQ",pvalue_colname="P_BOLT_LMM_INF",EA_colname="ALLELE1",NEA_colname="ALLELE0")
+obsgwas <- ooo
+rm(ooo) 
+print("GWAS reading in and formatting done")
+
+```
+
+# Estimate latent factor GWAS from summary statistics
+```{r,eval=FALSE} 
+# first ensure that covY matrix and observed trait GWAS have same ordering as latent factor loadings and contributions
+covY <- covY[rownames(FAloadings),rownames(FAloadings)]
+obsGWAS <- obsgwas[rownames(FAloadings)]
+
+
+# latent gwas
+latent_gwas = latentGWAS(obsGWAS = obsGWAS,covY = covY,L = FAloadings, beta_colname="beta",se_colname="SE",
+                       snpID_colname="rsID",EAF = obsGWAS[[1]]$EAF)
+print("latent GWAS done")
+```
+
+# Identify latent factors and their linked traits that have a signal
+
+```{r,eval=FALSE} 
+# identify latent traits with a GWS signal in region
+check <- sapply(latent_gwas,function(x) any(x$p_value<5E-8))
+fm_traits_latent <- names(check[check==TRUE]) # latent traits with a GWS signal in region
+
+print("fm_traits_latent")
+print(fm_traits_latent)
+
+# identify traits with contribution >0.20 from latent traits to be fine-mapped and that have a GWAS signal in region
+
+if(length(fm_traits_latent)==1) {
+	tmp <- rescaledFAloadings[,fm_traits_latent] 
+	linked_traits <- rownames(rescaledFAloadings)[which(tmp>0.2)] # identify traits with contribution >0.20 from latent traits to be fine-mapped
+	check <- sapply(obsGWAS[linked_traits],function(x) any(x$p_value<5E-8))
+	fm_traits_obs <- names(check[check==TRUE]) # obs traits with a GWS signal in region and contrib > 0.2 with latent factors fine-mapped
+	print("fm_traits_obs")
+	print(fm_traits_obs)
+
+}
+
+if(length(fm_traits_latent)>1) {
+	tmp <- rescaledFAloadings[,fm_traits_latent] 
+	linked_traits <- rownames(tmp)[which(apply(tmp,1, function(x) any(x>0.2)))] # identify traits with contribution >0.20 from latent traits to be fine-mapped
+	check <- sapply(obsGWAS[linked_traits],function(x) any(x$p_value<5E-8))
+	fm_traits_obs <- names(check[check==TRUE]) # obs traits with a GWS signal in region and contrib > 0.2 with latent factors fine-mapped
+	print("fm_traits_obs")
+	print(fm_traits_obs)
+}
+
+# If no latent factor has a signal or no linked observed trait has a signal, then stop running script
+# because nothing to fine-map.
+try(if(length(fm_traits_latent)==0) stop("No latent factor has a signal"))
+try(if(length(fm_traits_obs)==0) stop("No observed trait has a signal"))
+```
+
+# Read in genotype data for LD - needed for fine-mapping
+
+This step assumes that bgen files for LD calculation are available, either from in-sample data our a genetically similar reference panel. See below this block of code for an alternative if LD is pre-calculated from a different software.
+
+```{r,eval=FALSE} 
+bgenfiles = sprintf("%s/impute_%s_interval_l2_8bit.bgen",GENO_DIR, chromosome)
+backingfile = sprintf("%s/lipid/bigSNP/%d",OUTPUT_DIR,array_index)
+list_snp_id=list() # Each SNP ID should be in the form "<chr>_<pos>_<a1>_<a2>"
+list_snp_id[[1]] = paste0(obsGWAS[[1]]$CHR,'_',
+                          obsGWAS[[1]]$BP,'_',
+                          obsGWAS[[1]]$EA,'_',
+                          obsGWAS[[1]]$NEA)
+
+
+rds = snp_readBGEN(
+  bgenfiles,
+  backingfile,
+  list_snp_id,
+  ind_row = NULL,
+  bgi_dir = dirname(bgenfiles),
+  read_as = "dosage",
+  ncores = 1
+)
+
+test <- snp_attach(rds)
+
+print("map")
+print(head(test$map))
+
+RPinfo = test$map[,c(1,2,4,5,6)]
+RPinfo = as.data.frame(RPinfo)
+names(RPinfo)[2:3] = c("rsID","BP")  # c("chromosome","rsID","BP","allele1","allele2") 
+RPinfo$rsID <- paste0(chromosome,"_",RPinfo$BP) # no alleles in snp ids in case need to flip
+
+genotypes = test$genotypes[1:dim(test$genotypes)[1],1:dim(test$genotypes)[2]]
+colnames(genotypes) = RPinfo$rsID
+
+```
+
+If LD is pre-calculated from other software, just read in your LD matrix file and a file that contains the columns: "chromosome","rsID","BP","allele1","allele2" coinciding with your LD data source. Here, it is assumed that LD_1.csv is the LD matrix for region 1.
+
+```{r,eval=FALSE} 
+corX <- read.csv(sprintf("LD_%s.csv", array_index),row.names=1) # use row.names=1 if your file has row names in column 1 
+# file that contains the columns: "chromosome","rsID","BP","allele1","allele2" coinciding with your LD data source
+# It MUST have SNP rows in the same order as your LD file.
+RPinfo <- read.csv(sprintf("LDinfo_%s.csv", array_index))
+RPinfo$rsID <- paste0(chromosome,"_",RPinfo$BP) # to match with snp ids used in gwas
+rownames(corX) <- colnames(corX) <- RPinfo$rsID
+```
+
+# Align GWAS to LD
+
+This step is needed to ensure that the GWAS and LD source have the same effect alleles or consistently have opposite effect alleles. Otherwise, the correlation direction will sometimes be incorrect, which will affect dine-mapping results.
+
+```{r,eval=FALSE} 
+# keep only traits that will be fine-mapped
+tmp1 <- latent_gwas[fm_traits_latent] 
+tmp2 <- obsGWAS[fm_traits_obs]
+
+# align obsGWAS and latent_gwas to alleles coded for LD
+sig_gwas_latent <- vector("list",length(fm_traits_latent))
+for(i in 1:length(fm_traits_latent)) {
+ print(i)
+ print(head(tmp1[[i]]))
+ sig_gwas_latent[[i]] <- alignGWAS(tmp1[[i]],RPinfo)
+}
+
+sig_gwas_obs <- vector("list",length(fm_traits_obs))
+for(i in 1:length(fm_traits_obs)) {
+ print(i)
+ print(head(tmp2[[i]]))
+ sig_gwas_obs[[i]] <- alignGWAS(tmp2[[i]],RPinfo)
+}
+print("align LD and GWAS done")
+
+
+```
+
+# LD calculation 
+
+Only needed if calculating LD here.
+
+```{r,eval=FALSE} 
+# snps present in all gwas and in LD
+isnp <- intersect(sig_gwas_obs[[1]]$rsID, colnames(genotypes) )
+print(c("isnp",length(isnp)))
+
+X <- genotypes[,isnp]
+for(i in 1:length(fm_traits_obs)) {
+ rownames(sig_gwas_obs[[i]]) <- sig_gwas_obs[[i]]$rsID
+ sig_gwas_obs[[i]] <- sig_gwas_obs[[i]][isnp,]
+}
+for(i in 1:length(fm_traits_latent)) {
+  rownames(sig_gwas_latent[[i]]) <- sig_gwas_latent[[i]]$rsID
+  sig_gwas_latent[[i]] <- sig_gwas_latent[[i]][isnp,] 
+}
+
+
+
+Xqc <- apply(X,2,LDqc,theta=0.2,BestGuess=TRUE) # best-guess genotype matrix, using dosage tolerance 0.2
+# i.e.only dosages d that satisfy d<0.2, 0.8<d<1.2, and d>1.8 are retained; otherwise set to NA
+
+Nprop <- apply(Xqc,2,function(x) sum(!is.na(x)))/nrow(Xqc) # identify and keep variants that have genotype within tolerance for at least 80% of the sample
+keep <- which(Nprop >= 0.80)
+
+print(length(keep))
+
+Xqc <- Xqc[,keep]
+for(i in 1:length(sig_gwas_obs)) sig_gwas_obs[[i]] <- sig_gwas_obs[[i]][keep,]
+for(i in 1:length(sig_gwas_latent)) sig_gwas_latent [[i]] <- sig_gwas_latent[[i]][keep,] 
+
+ldout <- bigcor(Xqc, size=min(2000, ncol(Xqc)), verbose=FALSE, fun= "cor", use="p" )
+corX <- as.matrix(ldout[1:dim(ldout)[1],1:dim(ldout)[1]])
+rownames(corX) <- colnames(corX) <- colnames(Xqc)
+
+```
+
+
+# Data formatting for fine-mapping
+
+```{r,eval=FALSE} 
+# Set same snps in LD and gwas
+isnp <- intersect(rownames(corX), sig_gwas_obs[[1]]$rsID)
+for(i in 1:length(sig_gwas_obs)) sig_gwas_obs[[i]] <- sig_gwas_obs[[i]][isnp,]
+for(i in 1:length(sig_gwas_latent)) sig_gwas_latent [[i]] <- sig_gwas_latent[[i]][isnp,] 
+
+# change snp names so that they start with a characater - this is a requirement for JAM
+corXnames <- paste0("chr",rownames(corX))
+rownames(corX) <- colnames(corX) <- corXnames
+
+sig_gwas_latent_names <- paste0("chr",sig_gwas_latent[[1]]$rsID)
+for(i in 1:length(sig_gwas_latent)) sig_gwas_latent[[i]]$rsID <- sig_gwas_latent_names
+
+sig_gwas_obs_names <- paste0("chr",sig_gwas_obs[[1]]$rsID)
+for(i in 1:length(sig_gwas_obs)) sig_gwas_obs[[i]]$rsID <- sig_gwas_obs_names
+
+names(sig_gwas_obs) <- fm_traits_obs
+names(sig_gwas_latent) <- fm_traits_latent
+
+
+
+```
+
+# Fine-mapping
+
+**NOTE 1**: If running on the hpc, either
+
+1. Set argument NCORES=length(fm_traits_latent) in FLASHFMZEROwithJAMd for parallelisation, and set NCORES=length(fm_traits_obs) in multiJAMd. Do not use an arbitrary number for NCORES.
+OR
+2. Set NCORES=1 in FLASHFMZEROwithJAMd and multiJAMd.
+
+
+**NOTE 2**: In all fine-mapping functions below, set jam.nM.iter =1 if you have in-sample LD. For out-of-sample LD, like from 1000 Genomes, set jam.nM.iter =5.
+
+
+```{r,eval=FALSE} 
+# If one latent factor, then run JAMdwithGroups; if multiple latent factors, then run FLASHFMZEROwithJAMd, which will output both single and multi-trait results
+if(length(fm_traits_latent)==1){
+  FM_latent <- JAMdwithGroups(sig_gwas_latent[[1]], N=N, corX, save.path, cred = 0.99,
+                                                   jam.nM.iter =1, maxcv = 1, maxcv_stop = 20, 
+                                                   min.mppi = 0.01, r2.minmerge = 0.8)
+ FM_latent_CS99 <- FM_latent$CS
+} else {
+	FM_latent <- FLASHFMZEROwithJAMd(sig_gwas_latent, 
+                                                     corX, 
+                                                     N = N, 
+                                                     save.path=save.path, 
+                                                     TOdds = 1,
+                                                     cpp = 0.99, 
+                                                     NCORES=1, 
+                                                     maxcv = 1, 
+                                                     maxcv_stop = 20, 
+                                                     jam.nM.iter = 1, 
+                                                     r2.minmerge = 0.8, 
+                                                     minsnpmppi = 0.01)
+                                                 
+  FM_latent_CS99 <- allcredsetsPP(FM_latent$mpp.pp,cred=.99) # construct 99% credible sets (change cred=0.95 for 95% credible set)
+    names(FM_latent_CS99$fm) <- fm_traits_latent
+  names(FM_latent_CS99$flashfm) <- fm_traits_latent
+}
+
+
+ #  for observed trait(s) - if one trait, then run JAMdwithGroups; if multiple traits, then run multiJAMd
+if(length(fm_traits_obs)==1){
+  FM_obs <- JAMdwithGroups(sig_gwas_obs[[1]], N=N, corX, save.path, cred = 0.99,
+                                                    jam.nM.iter =1, maxcv = 1, maxcv_stop = 20, 
+                                                    min.mppi = 0.01, r2.minmerge = 0.8)
+  FM_obs_CS99 <- FM_obs$CS 
+
+} else {
+ FM_obs <- multiJAMd(sig_gwas_obs,  corX, N=N, save.path,
+                                    maxcv = 1, maxcv_stop = 20, jam.nM.iter =1, r2.minmerge=0.8, minsnpmppi = 0.01,
+                                    NCORES=1) #if running on the hpc
+                                   
+   FM_obs_CS99  <- multiJAMdCS(FM_obs, cred = 0.99)
+   names(FM_obs_CS99$fm) <- fm_traits_obs
+}
+ 
+# save: observed trait names,latent factor names, latent factor fine-mapping results, observed trait fine-mapping results, observed trait credible sets, latent factor credible sets, 
+save(fm_traits_obs, fm_traits_latent, FM_latent, FM_obs, FM_obs_CS99, FM_latent_CS99, file=file_FMresults)
+
+```
+

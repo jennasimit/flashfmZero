@@ -1,0 +1,161 @@
+---
+title: "Estimation of latent factors"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Example_Part1}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+Here, we provide step-by-step commands that describe how to estimate latent factors using data where individuals may have missing trait measurements, i.e. complete data are not required. Guidance in the interpretation of latent factors is also provided. 
+
+The steps are described in terms of our application to NMR metabolic traits from the INTERVAL study (sample size around 40,000), but they are broadly applicable to any high-dimensional traits. A similar script was used in our application to high-dimensional blood cell traits in the full INTERVAL sample of around 43,000 participants.
+
+Here, latent factors are estimated from the trait covariance matrix, which is calculated from pairwise complete trait data. Alternatively, pairwise trait covariance may be estimated from GWAS summary statistics using cross-trait LD score regression.
+
+The blocks of code are arranged by objective and include commented annotations so that users may copy-paste and easily modify for their own data, rather than copying many small blocks of code.
+
+
+# Data cleaning and estimation of trait covariance
+
+```{r,eval=FALSE} 
+library(tidyverse)
+library(psych) # factor analysis functions - fa.parallel, fa
+library(flashfmZero) # factor_contributions functions to calculation contributions and present in interpretable format
+
+# Specify directory where to save output files, e.g. trait covariance, factor loadings, and re-scaled factor loadings
+# these files will be needed for latent GWAS calculation in the NMR_latentGWAS_finemapping.R script and for interpretation
+OUTPUT_DIR="analysis_output/"
+
+# individual-level trait data, allowing for missing trait measurements - only used to calculate trait covariance matrix
+# alternatively, estimate pairwise trait covariance from GWAS summary statistics using cross-trait LD score regression
+lipid_phenos<-read_csv("traits.csv")
+
+Y_start<-lipid_phenos[,-1]
+N <- nrow(Y_start)
+
+#check the number of missing values
+count_non_missing_values_start <- unlist(as.data.frame(colSums(!is.na(Y_start))))
+missing_data_fraction <- 1-count_non_missing_values_start/N
+
+
+# remove any traits that are missing measurements in more than half of the sample
+trait_rm <- which(missing_data_fraction > 0.50)
+if(length(trait_rm)>0) {
+ Y_start <- Y_start[,-trait_rm]
+ missing_data_fraction <- missing_data_fraction[-trait_rm]
+} 
+
+# trait correlation 
+corY_start <- cor(Y_start, use="pairwise.complete.obs", method='pearson')
+```
+
+In the NMR data there is a high level of correlation - blocks having correlation > 0.99.
+Therefore, we remove the trait with the highest number of correlations greater than 0.99, one-by-one, until all correlations are at most 0.99. 
+
+```{r,eval=FALSE} 
+# Build the adjacency matrix
+adj_mat <- abs(corY_start) > 0.99
+diag(adj_mat) <- FALSE  # Remove self-loops
+
+
+# Initialize the list of variables to keep
+variables_to_trim <- NULL
+
+# Iteratively remove variables
+while (any(adj_mat)) {
+  # Compute the degree (number of low-correlation connections) for each variable
+  deg <- rowSums(adj_mat)
+  
+  # Compute the score: higher degree and more missing data increase the score
+  score <- deg * (1 + missing_data_fraction)
+  
+  remove_index<-which.max(score)
+  variables_to_trim<-c(variables_to_trim, remove_index)
+
+  # Update the adjacency matrix by removing the corresponding row and column
+  adj_mat[remove_index, ] = FALSE
+  adj_mat[,remove_index] = FALSE
+ }
+
+# Subsetdata frame to include only the variables to keep
+Y<-Y_start[,! 1:dim(Y_start)[2]  %in% variables_to_trim]
+write.table(as.data.frame(colnames(Y)), file=sprintf("%s/lipid/selected_phenotypes.tsv", OUTPUT_DIR), col.names=FALSE, row.names=FALSE, quote=FALSE, sep="\t")
+
+count_non_missing_values <- unlist(as.data.frame(colSums(!is.na(Y))))
+P <- ncol(Y)
+
+
+#check pairwise missing values
+count_non_missing_values_pairwise = matrix(0,P,P)
+colnames(count_non_missing_values_pairwise) <- rownames(count_non_missing_values_pairwise) <-  colnames(Y)
+for(i in 1:P){
+  for(j in 1:P){
+    check_pair = Y[,c(rownames(count_non_missing_values_pairwise)[i],
+                                           colnames(count_non_missing_values_pairwise)[j])]
+    check_count = sum(complete.cases(check_pair))
+    count_non_missing_values_pairwise[i,j] = check_count
+  }
+}
+
+
+# trait covariance
+covY <- cov(Y, use="pairwise.complete.obs", method='pearson')
+
+```
+
+# Factor analysis and latent factor contributions
+
+```{r,eval=FALSE} 
+# check if covY is positive semi-definite and if not, then make it
+minev <- min(eigen(covY)$values)
+A <- covY
+if(minev < 0) {
+ diag(A) <- diag(A)+ abs(minev)+10^(-10)
+ covY <- A
+}
+
+median_nonmissing2 <- median(count_non_missing_values_pairwise)
+facheck <- a.parallel(covY, fm="ml", n.obs=median_nonmissing2,fa="fa",show.legend=F,main="") # use median non-missing pairwise
+
+
+## set nfactors to the number of latent factors suggested above
+#nfactors <- 21 
+nfactors <- facheck$nfact
+
+pdf(sprintf("%sscree.pdf",OUTPUT_DIR)) # jpeg("scree.jpg") tiff("scree.tiff") 
+fa.parallel(covY, fm="ml", n.obs=median_nonmissing2,fa="fa",show.legend=F,main="")
+abline(v=nfactors,col="red")
+dev.off()
+
+write.csv(covY, file=sprintf("%sTrait_cov.csv", OUTPUT_DIR))
+
+
+# using number of latent factors from above, run factor analysis using covariance matrix
+faY <- fa(r=covY, nfactors=nfactors, fm="ml", rotate="varimax")
+faYloading <- as.matrix(faY$loadings)
+
+
+####rescaled factors to get contributions 
+latent_terms <- factor_contributions(faYloading) # output is factor loadings and re-scaled factor loadings (contributions) matrices with observed traits ordered by maximum contributing latent factor
+rescaledFAloading <- latent_terms[[1]]
+FAloading <- latent_terms[[2]]
+
+
+# save trait re-scaled factor analysis loadings, factor analysis loadings, and trait covariance matrix
+# such that traits in the covariance matrix are in the same order as in the factor loadings. 
+# This is necessary in order to calculate the latent GWAS summary statistics.
+write.csv(rescaledFAloading, file=sprintf("%sRe-scaled-Factor_loading_matrix.csv",OUTPUT_DIR))
+write.csv(FAloading, file=sprintf("%sFactor_loading_matrix.csv",OUTPUT_DIR))
+write.csv(covY[rownames(FAloading),rownames(FAloading)], file=sprintf("%sTrait_cov.csv",OUTPUT_DIR))
+
+```
+Latent GWAS estimation and fine-mapping is described in the article "Latent factor GWAS and fine-mapping".

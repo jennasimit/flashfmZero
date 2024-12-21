@@ -22,10 +22,10 @@ FlashfmZero is a computationally efficient approach to simultaneously fine-map s
 
 Any single-trait fine-mapping method that outputs model posterior probabilities may be integrated with flashfmZero and flashfm, and here we provide wrapper functions that integrate our expanded version of [JAM](https://onlinelibrary.wiley.com/doi/full/10.1002/gepi.21953). A wrapper function for flashfm with [FINEMAP](https://academic.oup.com/bioinformatics/article/32/10/1493/1743040), FLASHFMwithFINEMAP, is available here with examples in the [flashfm R package](https://jennasimit.github.io/flashfm/), where an overview of flashfm multi-trait fine-mapping is provided. 
 
-Example scripts that only use observed trait summary-level data in our analysis of the INTERVAL study's blood cell traits and NMR metabolic traits are available at:
+Example annotated scripts that only use observed trait summary-level data in our analysis of the INTERVAL study's NMR metabolic traits ([Karjalainen et al. 2024](https://www.nature.com/articles/s41586-024-07148-y)) are available on the flashfmZero website in the article tabs. These scripts (with minor modifications) were also used in our analysis of 99 blood cell traits from the INTERVAL study ([Astle et al. 2016](https://doi.org/10.1016/j.cell.2016.10.042), [Akbari et al. 2023](https://doi.org/10.1038/s41467-023-40679-y)).
 
-***XXX***
-***YYY***
+See [Estimation of latent factors](https://jennasimit.github.io/FlashfmZero/articles/Example_Part1.html) and [Latent factor GWAS and fine-mapping](https://jennasimit.github.io/FlashfmZero/articles/Example_Part2.html) for annotated example R scripts that use summary-level data and are broadly applicable to other GWAS data.
+
 
 For more details, please see:
 
