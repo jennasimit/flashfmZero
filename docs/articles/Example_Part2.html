@@ -116,8 +116,6 @@ from the observed trait GWAS.</p>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org" class="external-link">tidyverse</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flashfmZero</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># directory to save fine-mapping results</span></span>
-<span><span class="va">file_FMresults</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"output/%d.Rdata"</span>,<span class="va">array_index</span><span class="op">)</span></span>
 <span></span>
 <span> <span class="co"># directory to save temporary intermediate files - can delete later</span></span>
 <span><span class="va">OUTPUT_DIR</span><span class="op">=</span><span class="st">"output/"</span></span>
@@ -150,7 +148,11 @@ from the observed trait GWAS.</p>
 <span><span class="va">backingfile</span> <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%s/lipid/bigSNP/%d"</span>,<span class="va">OUTPUT_DIR</span>,<span class="va">array_index</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># sample size of study</span></span>
-<span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">40849</span></span></code></pre></div>
+<span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">40849</span></span>
+<span></span>
+<span></span>
+<span><span class="co"># directory to save fine-mapping results</span></span>
+<span><span class="va">file_FMresults</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"output/%d.Rdata"</span>,<span class="va">array_index</span><span class="op">)</span> <span class="co"># e.g. output file "1.Rdata" will contain results for region 1 (row 1 of region_list.tsv)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="harmonise-gwas-data-from-observed-traits">Harmonise GWAS data from observed traits<a class="anchor" aria-label="anchor" href="#harmonise-gwas-data-from-observed-traits"></a>
@@ -435,6 +437,37 @@ jam.nM.iter =1 if you have in-sample LD. For out-of-sample LD, like from
 <span> </span>
 <span><span class="co"># save: observed trait names,latent factor names, latent factor fine-mapping results, observed trait fine-mapping results, observed trait credible sets, latent factor credible sets, </span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/save.html" class="external-link">save</a></span><span class="op">(</span><span class="va">fm_traits_obs</span>, <span class="va">fm_traits_latent</span>, <span class="va">FM_latent</span>, <span class="va">FM_obs</span>, <span class="va">FM_obs_CS99</span>, <span class="va">FM_latent_CS99</span>, file<span class="op">=</span><span class="va">file_FMresults</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="construct-summary-table-of-fine-mapping-results">Construct summary table of fine-mapping results<a class="anchor" aria-label="anchor" href="#construct-summary-table-of-fine-mapping-results"></a>
+</h2>
+<p>This is an example of how to use built-in functions from this package
+to summarise fine-mapping results from many traits and regions,
+producing a table as in Supplementary Tables S9 and S14 of our
+associated paper. “FMsummary_table_general” is a wrapper function for
+“FMsummary_table”.</p>
+<p>The below code will loop through all regions in the regions file
+“region_list.tsv” and loads in the corresponding fine-mapping output
+from the file “array_index”.Rdata, e.g. 1.Rdata is the file output for
+region 1. It assumes that the output is saved with names as above,
+i.e. fm_traits_obs, fm_traits_latent, FM_latent, FM_obs, and will
+caclulate the 99/% credible sets for each trait/factor (for 95/%
+credible sets use “cred=0.95” in FMsummary_table_general)</p>
+<p>The code below checks if the file “array_index”.Rdata exists. This
+pipeline is designed such that the script will return an error and no
+output if there are not latent factor AND observed trait signals in the
+region, so it is possible for “array_index”.Rdata not to exist.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">out</span> <span class="op">&lt;-</span> <span class="cn">NULL</span></span>
+<span><span class="va">regions</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.table</a></span><span class="op">(</span><span class="st">"region_list.tsv"</span>,header<span class="op">=</span><span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">array_index</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">regions</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">fname</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">array_index</span>,<span class="st">".Rdata"</span><span class="op">)</span> <span class="co"># adjust this file name if needed</span></span>
+<span>  <span class="kw">if</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html" class="external-link">file.exists</a></span><span class="op">(</span><span class="va">fname</span><span class="op">)</span><span class="op">)</span><span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="va">fname</span><span class="op">)</span></span>
+<span>  <span class="va">out1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/FMsummary_table_general.html">FMsummary_table_general</a></span><span class="op">(</span><span class="va">FM_obs</span>, <span class="va">FM_latent</span>, <span class="va">fm_traits_ob</span>, <span class="va">fm_traits_latent</span>,regions<span class="op">=</span><span class="va">regions</span>,array_index<span class="op">=</span><span class="va">array_index</span>,cred<span class="op">=</span><span class="fl">0.99</span><span class="op">)</span> </span>
+<span>  <span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="va">out</span>,<span class="va">out1</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 </div>
   </div>
 

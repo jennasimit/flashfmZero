@@ -53,6 +53,7 @@ Collate:
     'SMIM1.corX.R'
     'SMIM1.gwas.list.interval.fa25.R'
     'StrongestPairwiseCorrelation.R'
+    'Table_FMsummaries.R'
     'TopModels.R'
     'TracePlots.R'
     'dataprep.R'

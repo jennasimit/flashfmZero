@@ -34,8 +34,6 @@ library(Rsamtools)
 library(tidyverse)
 library(flashfmZero)
 
-# directory to save fine-mapping results
-file_FMresults <- sprintf("output/%d.Rdata",array_index)
 
  # directory to save temporary intermediate files - can delete later
 OUTPUT_DIR="output/"
@@ -69,6 +67,11 @@ backingfile = sprintf("%s/lipid/bigSNP/%d",OUTPUT_DIR,array_index)
 
 # sample size of study
 N <- 40849
+
+
+# directory to save fine-mapping results
+file_FMresults <- sprintf("output/%d.Rdata",array_index) # e.g. output file "1.Rdata" will contain results for region 1 (row 1 of region_list.tsv)
+
 ```
 
 
@@ -359,4 +362,27 @@ if(length(fm_traits_obs)==1){
 save(fm_traits_obs, fm_traits_latent, FM_latent, FM_obs, FM_obs_CS99, FM_latent_CS99, file=file_FMresults)
 
 ```
+
+# Construct summary table of fine-mapping results
+
+This is an example of how to use built-in functions from this package to summarise fine-mapping results from many traits and regions, producing a table as in Supplementary Tables S9 and S14 of our associated paper. "FMsummary_table_general" is a wrapper function for "FMsummary_table". 
+
+The below code will loop through all regions in the regions file "region_list.tsv" and loads in the corresponding fine-mapping output from the file "array_index".Rdata, e.g. 1.Rdata is the file output for region 1. It assumes that the output is saved with names as above, i.e. fm_traits_obs, fm_traits_latent, FM_latent, FM_obs, and will caclulate the 99/% credible sets for each trait/factor (for 95/% credible sets use "cred=0.95" in FMsummary_table_general)
+
+The code below checks if the file "array_index".Rdata exists. This pipeline is designed such that the script will return an error and no output if there are not latent factor AND observed trait signals in the region, so it is possible for "array_index".Rdata not to exist.
+
+```{r,eval=FALSE} 
+out <- NULL
+regions <- read.table("region_list.tsv",header=TRUE)
+for(array_index in 1:nrow(regions)) {
+  fname <- paste0(array_index,".Rdata") # adjust this file name if needed
+  if(file.exists(fname)){
+  load(fname)
+  out1 <- FMsummary_table_general(FM_obs, FM_latent, fm_traits_ob, fm_traits_latent,regions=regions,array_index=array_index,cred=0.99) 
+  out <- rbind(out,out1)
+  }
+}
+
+```
+
 
