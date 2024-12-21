@@ -158,4 +158,4 @@ write.csv(FAloading, file=sprintf("%sFactor_loading_matrix.csv",OUTPUT_DIR))
 write.csv(covY[rownames(FAloading),rownames(FAloading)], file=sprintf("%sTrait_cov.csv",OUTPUT_DIR))
 
 ```
-Latent GWAS estimation and fine-mapping is described in the article "Latent factor GWAS and fine-mapping".
+Latent GWAS estimation and fine-mapping is described in [Latent factor GWAS and fine-mapping](https://jennasimit.github.io/flashfmZero/articles/Example_Part2.html).
