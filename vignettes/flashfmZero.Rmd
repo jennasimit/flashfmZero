@@ -95,17 +95,17 @@ Alternatively, latent factor GWAS summary statistics may be estimated from the o
 
 *Required data for latent factor GWAS estimation using summary-level data* 
 
-1. Factor loading matrix (*FAloading* in above example), which has observed trait names as row names and latent factor names as column names.
+1. L: Factor loading matrix (*FAloading* in above example), which has observed trait names as row names and latent factor names as column names.
 
-2. Trait covariance matrix (*sel_covY* in above example), which has observed trait names in row and column names, appearing in the same order as the trait names in the rows of FAloading.
+2. covY: Trait covariance matrix (*sel_covY* in above example), which has observed trait names in row and column names, appearing in the same order as the trait names in the rows of FAloading.
 
-3. Observed trait GWAS effect estimates and standard errors, (*obsgwas* is provided as an example for ten traits). This should be a list of the P observed trait GWAS data.frames, each data.frame, i.e. obsgwas[[i]] is the data.frame for trait i. The observed traits must appear in the same order as in covY. Each data.frame has rows corresponding to genetic variants and columns of the SNP id, effect estimates (beta) and their standard errors, and effect allele frequencies. Only variants present for all traits should be included. Column names are recommended to be "beta", "SE", and "rsID" for compatibility with the fine-mapping functions. **All GWAS must have the same effect allele before running latentGWAS**. The function **flashfmZero::harmoniseGWAS** may be used to re-format data. 
+3. obsGWAS: Observed trait GWAS effect estimates and standard errors, (*sel_obsgwas* is provided as an example for ten traits). This should be a list of the P observed trait GWAS data.frames, each data.frame, i.e. sel_obsgwas[[i]] is the data.frame for trait i. The observed traits must appear in the same order as in covY. Each data.frame has rows corresponding to genetic variants and columns of the SNP id, effect estimates (beta) and their standard errors, and effect allele frequencies. Only variants present for all traits should be included. Column names are recommended to be "beta", "SE", and "rsID" for compatibility with the fine-mapping functions. **All GWAS must have the same effect allele before running latentGWAS**. The function **flashfmZero::harmoniseGWAS** may be used to re-format data. 
 
 
 ```{r,eval=FALSE} 
 library(flashfmZero)
-latent_gwas <- latentGWAS(obsGWAS = obsgwas,covY = covY,L = FAloadings, beta_colname="beta",se_colname="SE",
-                       snpID_colname="rsID",EAF = obsgwas[[1]]$EAF)
+latent_gwas <- latentGWAS(obsGWAS = sel_obsgwas,covY = sel_covY,L = FAloading, beta_colname="beta",se_colname="SE",
+                       snpID_colname="rsID",EAF = sel_obsgwas[[1]]$EAF)
 ```
 
 # Fine-mapping
