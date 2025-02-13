@@ -104,8 +104,7 @@ Alternatively, latent factor GWAS summary statistics may be estimated from the o
 
 ```{r,eval=FALSE} 
 library(flashfmZero)
-latent_gwas <- latentGWAS(obsGWAS = sel_obsgwas,covY = sel_covY,L = FAloading, beta_colname="beta",se_colname="SE",
-                       snpID_colname="rsID",EAF = sel_obsgwas[[1]]$EAF)
+latent_gwas <- latentGWAS(obsGWAS = sel_obsgwas,covY = sel_covY,L = FAloading, beta_colname="beta",se_colname="SE", snpID_colname="rsID",EAF = sel_obsgwas[[1]]$EAF)
 ```
 
 # Fine-mapping
@@ -117,7 +116,7 @@ Here we illustrate fine-mapping using latent factors that were estimated from th
 
 1. [gwas.list](#smim1-gwas-list-interval-fa25): a list of data.frames (one for each trait), with required (minimal) columns: 
 
-(a) **rsID**: (variant ID names - if using the JAM functions, variant names must not contain ":" and must start with a non-numeric character, see [Notes](#notes) for details). All rsIDs must be unique, i.e. no duplicate names. 
+(a) **rsID**: (variant ID names - if using the JAM functions, variant names must not contain ":" and variant names must start with a non-numeric character, see [Notes](#notes) for details). All rsIDs must be unique, i.e. no duplicate names. 
 
 (b) **beta**: GWAS effect sizes 
 
@@ -250,7 +249,7 @@ library(flashfmZero)
 save.path.tmp <- "tmpDIR"
 dir.create(save.path.tmp) 
 #' NB If the named directory in save.path does not exist, the function will create this save.path (if single directory name) as a sub-folder in the working directory.
-#' set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), 
+#' set NCORES=M (number of traits M is optimal but could choose smaller number) or NCORES=1 if running on hpc, 
 #' but if on Windows/Mac, must use NCORES=1
 #' 
 # JAM on multiple traits, also outputting SNP groups
@@ -282,7 +281,7 @@ library(flashfmZero)
 save.path.tmp <- "tmpDIR"
 dir.create(save.path.tmp) 
 #' NB If the named directory in save.path does not exist, the function will create this save.path (if single directory name) as a sub-folder in the working directory.
-#' set NCORES=M (number of traits) or NCORES=1 if running on hpc (do not set an arbitrary number of cores), 
+#' set NCORES=M (number of traits M is optimal but could choose smaller number) or NCORES=1 if running on hpc, 
 #' but if on Windows/Mac, must use NCORES=1
 #' 
 # flashfm on multiple traits with zero correlation

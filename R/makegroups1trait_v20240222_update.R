@@ -185,7 +185,13 @@ JAMmulti2_sameN <- function(gwas.list, corX, ybar, Vy, N, r2 = 0.99, save.path,
     
 #    for (j in 1:M) { outJ[[j]] <-  Jamext(j, raf=raf1[[j]], beta1=beta1[[j]], corX, Vy=Vy[j], refG, save.path, maxcv, maxcv_stop, jam.nM.iter, ybar=ybar[j], N )
 #		}
- 
+ 	
+ 	if (!dir.exists(save.path)) {
+        message(c("Directory ", save.path, " does not exist. Creating directory ", 
+            save.path))
+        dir.create(save.path)
+  		  }
+ 	
  	ivec <- vector("list", M)
     for (i in 1:M) ivec[[i]] <- i
     outJ <- parallel::mclapply(ivec, JAMext, raf1, beta1, corX, refG, save.path, maxcv, maxcv_stop,jam.nM.iter, N, taglist,nsnps, mc.cores = NCORES,extra.java.arguments=extra.java.arguments)
@@ -210,6 +216,12 @@ JAMmulti2_sameN <- function(gwas.list, corX, ybar, Vy, N, r2 = 0.99, save.path,
 
 
 JAMext <- function(j, raf1,beta1,corX, refG, save.path, maxcv, maxcv_stop, jam.nM.iter, N, taglist,nsnps,extra.java.arguments=NULL ){
+ 		save.path <- paste0(save.path,"/a",sample(1:10000,1))
+ 		if (!dir.exists(save.path)) {
+        message(c("Directory ", save.path, " does not exist. Creating directory ", 
+            save.path))
+        dir.create(save.path)
+  		  }
  		ybar=0
  		Vy=1
  		raf <- raf1[[j]]
@@ -283,6 +295,8 @@ JAMext <- function(j, raf1,beta1,corX, refG, save.path, maxcv, maxcv_stop, jam.n
         #SM <- flashfm:::PP2snpmod(SM)
         SM <- PP2snpmod(SM)
  
+ 		unlink(paste0(save.path,"/*"))
+ 		
  		return(list(mbeta=mbeta, SM=SM))
 }
 

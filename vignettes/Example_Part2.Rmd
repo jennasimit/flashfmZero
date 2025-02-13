@@ -307,7 +307,7 @@ names(sig_gwas_latent) <- fm_traits_latent
 
 **NOTE 1**: If running on the hpc, either
 
-1. Set argument NCORES=length(fm_traits_latent) in FLASHFMZEROwithJAMd for parallelisation, and set NCORES=length(fm_traits_obs) in multiJAMd. Do not use an arbitrary number for NCORES.
+1. Set argument NCORES=length(fm_traits_latent) in FLASHFMZEROwithJAMd for parallelisation, and set NCORES=length(fm_traits_obs) in multiJAMd. Could also set a smaller number for NCORES, but setting to the number of traits is optimal.
 OR
 2. Set NCORES=1 in FLASHFMZEROwithJAMd and multiJAMd.
 

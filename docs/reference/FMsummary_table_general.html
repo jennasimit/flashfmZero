@@ -63,7 +63,7 @@
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">FMsummary_table_general</span><span class="op">(</span></span>
 <span>  <span class="va">FM_obs</span>,</span>
 <span>  <span class="va">FM_latent</span>,</span>
-<span>  <span class="va">fm_traits_ob</span>,</span>
+<span>  <span class="va">fm_traits_obs</span>,</span>
 <span>  <span class="va">fm_traits_latent</span>,</span>
 <span>  cred <span class="op">=</span> <span class="fl">0.99</span>,</span>
 <span>  regions <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -73,7 +73,15 @@
 
     <div id="arguments">
     <h2>Arguments</h2>
-    <dl><dt>fm_traits_ob</dt>
+    <dl><dt>FM_obs</dt>
+<dd><p>observed trait fine-mapping object output from "multiJAMd"</p></dd>
+
+
+<dt>FM_latent</dt>
+<dd><p>latent factor object output from "flashfm" (flashfmZero or flashfm related wrappers, like "FLASHFMZEROwithJAMd") or "JAMdwithGroups"</p></dd>
+
+
+<dt>fm_traits_obs</dt>
 <dd><p>vector of observed trait names (same length as number of traits that were fine-mapped) and in same order as fine-mapped traits</p></dd>
 
 
@@ -91,14 +99,6 @@
 
 <dt>array_index</dt>
 <dd><p>row number of regions data.frame</p></dd>
-
-
-<dt>FMobs</dt>
-<dd><p>observed trait fine-mapping object output from "multiJAMd"</p></dd>
-
-
-<dt>FMlatent</dt>
-<dd><p>latent factor object output from "flashfm" (flashfmZero or flashfm related wrappers, like "FLASHFMZEROwithJAMd") or "JAMdwithGroups"</p></dd>
 
 </dl></div>
     <div id="value">

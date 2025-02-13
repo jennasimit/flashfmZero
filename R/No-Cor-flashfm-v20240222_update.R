@@ -1,4 +1,24 @@
 
+# more flexible than calckappa to allow for larger number of traits
+# otherwise have convergence issues
+calckappa2 <- function (nsnps, p, ndis, target.odds) 
+ {
+     if(ndis <= 15) {upper.bound <- 9000; init.par <- 50}
+     if(ndis > 15 & ndis <1000) {upper.bound <- 100; ; init.par <- 20}
+     if(ndis >= 1000) {upper.bound <- 50; ; init.par <- 5}
+     prob <- dbinom(0:nsnps, size = nsnps, prob = p)
+     f <- function(kappa) {
+         abs(odds_no_sharing(kappa, prob, ndis) - log(target.odds))
+     }
+     out <- optim(par=20,f, lower=1, upper=upper.bound,method="Brent",control=list(abstol=1E-8))
+     if(out$convergence != 0)
+     	warning("No convergence")   
+     if (abs(upper.bound - out$par) < 0.5) 
+        warning("Optimizing kappa near boundary")
+     return(out$par)
+ }
+ 
+
 
 #' @title Wrapper for flashfm Multi-Trait Fine-Mapping with JAM (when trait correlation is zero)  - this is the dynamic number of max causal variant version
 #' @param gwas.list List of M data.frame objects, where M is the number of traits; gwas.list\[\[i\]\] is a data.frame for  trait i with 3 columns named: rsID, beta, EAF
@@ -130,7 +150,7 @@ flashfmZero <- function(main.input,TOdds=1,cpp=0.99,maxmod=NULL,NCORES) {
 	qt <- names(main.input$SM)    	
 	kappas <- c()
 	#for(j in 1:length(TOdds)) kappas <- c(kappas,flashfm:::calckappa(nsnps=nsnps,p=2/nsnps,ndis=nd,target.odds=TOdds[j]))
-	for(j in 1:length(TOdds)) kappas <- c(kappas, calckappa(nsnps=nsnps,p=2/nsnps,ndis=nd,target.odds=TOdds[j]))
+	for(j in 1:length(TOdds)) kappas <- c(kappas, calckappa2(nsnps=nsnps,p=2/nsnps,ndis=nd,target.odds=TOdds[j]))
     kappas <- round(kappas)
     traits <- paste(qt, collapse = "-")
     bestmod.thr <- vector("list",M)

@@ -7,7 +7,7 @@
 FMsummary_table_general(
   FM_obs,
   FM_latent,
-  fm_traits_ob,
+  fm_traits_obs,
   fm_traits_latent,
   cred = 0.99,
   regions = NULL,
@@ -15,7 +15,11 @@ FMsummary_table_general(
 )
 }
 \arguments{
-\item{fm_traits_ob}{vector of observed trait names (same length as number of traits that were fine-mapped) and in same order as fine-mapped traits}
+\item{FM_obs}{observed trait fine-mapping object output from "multiJAMd"}
+
+\item{FM_latent}{latent factor object output from "flashfm" (flashfmZero or flashfm related wrappers, like "FLASHFMZEROwithJAMd") or "JAMdwithGroups"}
+
+\item{fm_traits_obs}{vector of observed trait names (same length as number of traits that were fine-mapped) and in same order as fine-mapped traits}
 
 \item{fm_traits_latent}{vector of latent factor names (same length as number of factors that were fine-mapped) and in same order as fine-mapped factors}
 
@@ -24,10 +28,6 @@ FMsummary_table_general(
 \item{regions}{data.frame with region details, where the columns are in order: "chromosom"e, "start"", "end"}
 
 \item{array_index}{row number of regions data.frame}
-
-\item{FMobs}{observed trait fine-mapping object output from "multiJAMd"}
-
-\item{FMlatent}{latent factor object output from "flashfm" (flashfmZero or flashfm related wrappers, like "FLASHFMZEROwithJAMd") or "JAMdwithGroups"}
 }
 \value{
 Table where each row corresponds to one trait, listing credible set size, details of variant with maximum MPP, variants with MPP>0.90 and snp groups coinciding with the variant(s)

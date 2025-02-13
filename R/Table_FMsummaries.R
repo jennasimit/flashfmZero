@@ -118,9 +118,9 @@ return(out)
 
 
 #' @title Make table of fine-mapping results output for latent factors and observed traits (wrapper for FMsummary_table)
-#' @param FMobs observed trait fine-mapping object output from "multiJAMd"
-#' @param FMlatent latent factor object output from "flashfm" (flashfmZero or flashfm related wrappers, like "FLASHFMZEROwithJAMd") or "JAMdwithGroups" 
-#' @param fm_traits_ob vector of observed trait names (same length as number of traits that were fine-mapped) and in same order as fine-mapped traits
+#' @param FM_obs observed trait fine-mapping object output from "multiJAMd"
+#' @param FM_latent latent factor object output from "flashfm" (flashfmZero or flashfm related wrappers, like "FLASHFMZEROwithJAMd") or "JAMdwithGroups" 
+#' @param fm_traits_obs vector of observed trait names (same length as number of traits that were fine-mapped) and in same order as fine-mapped traits
 #' @param fm_traits_latent vector of latent factor names (same length as number of factors that were fine-mapped) and in same order as fine-mapped factors
 #' @param cred level used for credible set construction; default is 0.99
 #' @param regions data.frame with region details, where the columns are in order: "chromosom"e, "start"", "end"
@@ -128,7 +128,7 @@ return(out)
 #' @return Table where each row corresponds to one trait, listing credible set size, details of variant with maximum MPP, variants with MPP>0.90 and snp groups coinciding with the variant(s)
 #' @export
 #' @author Jenn Asimit
-FMsummary_table_general <- function(FM_obs, FM_latent, fm_traits_ob, fm_traits_latent,cred=0.99, regions=NULL,array_index=NULL){
+FMsummary_table_general <- function(FM_obs, FM_latent, fm_traits_obs, fm_traits_latent,cred=0.99, regions=NULL,array_index=NULL){
  out1 <- FMsummary_table(FM_obs,method="multiJAMd",traitnames=fm_traits_obs,cred=cred)
  if(names(FM_latent)[1] == "mpp.pp") {
   outM <- FMsummary_table(FM_latent,method="flashfm",traitnames=fm_traits_latent,cred=cred)
