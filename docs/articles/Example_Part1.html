@@ -203,7 +203,7 @@ correlations are at most 0.99.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">median_nonmissing2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">count_non_missing_values_pairwise</span><span class="op">)</span></span>
-<span><span class="va">facheck</span> <span class="op">&lt;-</span> <span class="fu">a.parallel</span><span class="op">(</span><span class="va">covY</span>, fm<span class="op">=</span><span class="st">"ml"</span>, n.obs<span class="op">=</span><span class="va">median_nonmissing2</span>,fa<span class="op">=</span><span class="st">"fa"</span>,show.legend<span class="op">=</span><span class="cn">F</span>,main<span class="op">=</span><span class="st">""</span><span class="op">)</span> <span class="co"># use median non-missing pairwise</span></span>
+<span><span class="va">facheck</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/psych/man/fa.parallel.html" class="external-link">fa.parallel</a></span><span class="op">(</span><span class="va">covY</span>, fm<span class="op">=</span><span class="st">"ml"</span>, n.obs<span class="op">=</span><span class="va">median_nonmissing2</span>,fa<span class="op">=</span><span class="st">"fa"</span>,show.legend<span class="op">=</span><span class="cn">F</span>,main<span class="op">=</span><span class="st">""</span><span class="op">)</span> <span class="co"># use median non-missing pairwise</span></span>
 <span></span>
 <span></span>
 <span><span class="co">## set nfactors to the number of latent factors suggested above</span></span>

@@ -29,8 +29,8 @@ See [Estimation of latent factors](https://jennasimit.github.io/flashfmZero/arti
 
 For more details, please see:
 
-F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2024). 
-Improved fine-mapping resolution of high-dimensional traits through multivariate analyses of latent factors. BioRxiv
+F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2025). 
+Improved genetic discovery and fine-mapping resolution through multivariate latent factor analysis of high-dimensional traits. *Cell Genomics*.  [link](https://doi.org/10.1016/j.xgen.2025.100847)   
  
 **Estimating latent factor GWAS summary statistics from observed trait GWAS summary statistics** 
 

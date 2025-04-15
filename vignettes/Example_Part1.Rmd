@@ -124,7 +124,7 @@ if(minev < 0) {
 }
 
 median_nonmissing2 <- median(count_non_missing_values_pairwise)
-facheck <- a.parallel(covY, fm="ml", n.obs=median_nonmissing2,fa="fa",show.legend=F,main="") # use median non-missing pairwise
+facheck <- fa.parallel(covY, fm="ml", n.obs=median_nonmissing2,fa="fa",show.legend=F,main="") # use median non-missing pairwise
 
 
 ## set nfactors to the number of latent factors suggested above
