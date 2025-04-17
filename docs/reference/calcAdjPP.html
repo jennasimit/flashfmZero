@@ -60,7 +60,28 @@
     </div>
 
     <div id="ref-usage">
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calcAdjPP</span><span class="op">(</span><span class="va">qt</span>, <span class="va">STR</span>, <span class="va">SS</span>, <span class="va">tau</span>, <span class="va">nsnpspermodel</span>, <span class="va">kappa</span>, <span class="va">PP</span>, <span class="va">beta</span>, <span class="va">NCORES</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calcAdjPP</span><span class="op">(</span></span>
+<span>  <span class="va">qt</span>,</span>
+<span>  <span class="va">STR</span>,</span>
+<span>  <span class="va">SS</span>,</span>
+<span>  <span class="va">tau</span>,</span>
+<span>  <span class="va">nsnpspermodel</span>,</span>
+<span>  <span class="va">kappa</span>,</span>
+<span>  <span class="va">PP</span>,</span>
+<span>  <span class="va">beta</span>,</span>
+<span>  <span class="va">SSy</span>,</span>
+<span>  <span class="va">Sxy</span>,</span>
+<span>  <span class="va">xcovo</span>,</span>
+<span>  <span class="va">Mx</span>,</span>
+<span>  <span class="va">N</span>,</span>
+<span>  <span class="va">allVres</span>,</span>
+<span>  <span class="va">covY</span>,</span>
+<span>  <span class="va">Nqq</span>,</span>
+<span>  <span class="va">Nq3</span>,</span>
+<span>  <span class="va">Nq4</span>,</span>
+<span>  <span class="va">fastapprox</span>,</span>
+<span>  <span class="va">NCORES</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div id="arguments">
@@ -95,6 +116,50 @@
 
 <dt>beta</dt>
 <dd><p>list of joint effect estimates for models in STR; multi.beta output</p></dd>
+
+
+<dt>SSy</dt>
+<dd><p>matrix of trait cross-products</p></dd>
+
+
+<dt>Sxy</dt>
+<dd><p>matrix with each column being the cross-product between SNPs and a trait</p></dd>
+
+
+<dt>xcovo</dt>
+<dd><p>SNP covariance matrix</p></dd>
+
+
+<dt>Mx</dt>
+<dd><p>vector of SNP means</p></dd>
+
+
+<dt>N</dt>
+<dd><p>number of individuals with measurements for all traits</p></dd>
+
+
+<dt>allVres</dt>
+<dd><p>list of variance residuals</p></dd>
+
+
+<dt>covY</dt>
+<dd><p>covariance matrix of traits</p></dd>
+
+
+<dt>Nqq</dt>
+<dd><p>matrix of all pair-wise counts of number of individuals with both traits in a pair measured;</p></dd>
+
+
+<dt>Nq3</dt>
+<dd><p>vector of counts of number of individuals with three traits measured; all triples considered; NULL if M &lt; 4</p></dd>
+
+
+<dt>Nq4</dt>
+<dd><p>vector of counts of number of individuals with four traits measured; all quadruples considered; NULL if M &lt; 5</p></dd>
+
+
+<dt>fastapprox</dt>
+<dd><p>logical that is TRUE when fast approximation is used that does not include unequal sample size adjustments; default is FALSE</p></dd>
 
 
 <dt>NCORES</dt>

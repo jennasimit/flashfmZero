@@ -114,7 +114,7 @@ marginalpp0 <- function(STR, PP, mbeta, kappa, N,nsnps,NCORES) {
    
   
    
-    alt.pp <- calcAdjPP(qt=qt,STR=STR,SS=SS,tau=tau,nsnpspermodel=nsnpspermodel,kappa=kappa,PP=PP,beta=mbeta,NCORES)
+    alt.pp <- calcAdjPP0(qt=qt,STR=STR,SS=SS,tau=tau,nsnpspermodel=nsnpspermodel,kappa=kappa,PP=PP,beta=mbeta,NCORES)
 
     
     for(i in seq_along(alt.pp)){
@@ -249,7 +249,7 @@ flashfmZero.input <- function(modPP.list,beta1.list,corX,Nall,ybar.all, raf) {
 
 
 
-#' @title internal function for calcAdjPP for a pair of traits
+#' @title internal function for calcAdjPP0 for a pair of traits
 #' @param i model index for trait 1
 #' @param j model index for trait 2
 #' @param T1 index of trait 1
@@ -260,7 +260,7 @@ flashfmZero.input <- function(modPP.list,beta1.list,corX,Nall,ybar.all, raf) {
 #' @param nsnpspermodel list of number of SNPs per model for each model in STR
 #' @param kappa single value of sharing parameter kappa
 #' @author Jenn Asimit
-calcQ12 <- function(i,j,T1,T2,SS,PP,tau,nsnpspermodel,kappa) {
+calcQ120 <- function(i,j,T1,T2,SS,PP,tau,nsnpspermodel,kappa) {
 # contributes to Q for 1 | 2 and 2|1
 if(SS[[T1]][[i]][1] =="1" | SS[[T2]][[j]][1] == "1") { #at least one is null model -> tau=1 & intersection is empty
  kadj <- 1
@@ -276,7 +276,7 @@ adj2 <- PP[[T1]][[i]] * tk
 return(c(adj1,adj2))
 }
 
-vcalcQ12 <- Vectorize(calcQ12,vectorize.args=c("i","j"),SIMPLIFY=FALSE) #last arg is so that have single element output and can apply outer
+vcalcQ120 <- Vectorize(calcQ120,vectorize.args=c("i","j"),SIMPLIFY=FALSE) #last arg is so that have single element output and can apply outer
 
 
 
@@ -306,7 +306,7 @@ vcalcQ12 <- Vectorize(calcQ12,vectorize.args=c("i","j"),SIMPLIFY=FALSE) #last ar
 #' @param NCORES number of cores for parallel computing; recommend NCORES=M, but if on Windows, use NCORES=1; 
 #' @return list of trait-adjusted posterior probabilities for each trait at sharing parameter kappa
 #' @author Jenn Asimit
-calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,NCORES) {
+calcAdjPP0 <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,NCORES) {
  
     M <- length(qt)
     np <- choose(M,2)
@@ -318,7 +318,7 @@ calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,NCORES) {
 	for(i in 1:np) { # for each qt pair Q[[i]] is a matrix where Q[[i]][j,k] is a list with 
 					# two components adjPP12[modj for T1,modk for T2], adjPP21[modj for T1,modk for T2] where 1=c2[1,i], 2=c2[2,i]
 	    
-     tmp <- outer(1:nummods[c2[1,i]],1:nummods[c2[2,i]],vcalcQ12,T1=c2[1,i],T2=c2[2,i],SS,PP,tau,nsnpspermodel,kappa)
+     tmp <- outer(1:nummods[c2[1,i]],1:nummods[c2[2,i]],vcalcQ120,T1=c2[1,i],T2=c2[2,i],SS,PP,tau,nsnpspermodel,kappa)
      q12 <- apply(tmp,2,function(x) unlist(lapply(x,"[[",1))) # first element of each cell in matrix; q12 is a matrix
  	 q21 <- apply(tmp,2,function(x) unlist(lapply(x,"[[",2)))  	    
 	 q1 <- log(q12)
@@ -352,7 +352,7 @@ calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,NCORES) {
 		PPadj <- vector("list",M)
 		ivec <- vector("list",M)
 		for(i in 1:M) ivec[[i]] <- i
-		Tadj <- parallel::mclapply(ivec,pre.ppadj,qns,Q,mc.cores =NCORES)	
+		Tadj <- parallel::mclapply(ivec,pre.ppadj0,qns,Q,mc.cores =NCORES)	
 		for(i in 1:M) {
 			PPadj[[i]] <- lPP[[i]] + Tadj[[i]] 	
 			PPadj[[i]] <- exp(PPadj[[i]] - logsum(PPadj[[i]]))
@@ -366,7 +366,7 @@ calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,NCORES) {
 
 #### ppadj functions ####
 
-pre.ppadj <- function(i,qns,Q) {
+pre.ppadj0 <- function(i,qns,Q) {
 	    
 	    qn  <- paste0("Q",i)
 #	 	ind <- grep(qn,qns,fixed=TRUE) # not correct if 10 or more traits

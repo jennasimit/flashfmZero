@@ -139,8 +139,8 @@ marginalpp <- function(STR, PP, mbeta, covY, SSy, Sxy, kappa, N,Nqq,nsnps,Mx,xco
     vr <- Vres.all(Nqq,mbeta,SSy,Sxy)
     
     
-    #alt.pp <- calcAdjPP(qt=qt,STR=STR,SS=SS,tau=tau,nsnpspermodel=nsnpspermodel,kappa=kappa,PP=PP,beta=mbeta,SSy=SSy,Sxy=Sxy,xcovo=xcovo,Mx=Mx,N=N,allVres=vr,covY=covY,Nqq=Nqq,Nq3=Nq3,Nq4=Nq4,fastapprox,NCORES)
-    alt.pp <- calcAdjPP(qt=qt,STR=STR,SS=SS,tau=tau,nsnpspermodel=nsnpspermodel,kappa=kappa,PP=PP,beta=mbeta,NCORES)
+    alt.pp <- calcAdjPP(qt=qt,STR=STR,SS=SS,tau=tau,nsnpspermodel=nsnpspermodel,kappa=kappa,PP=PP,beta=mbeta,SSy=SSy,Sxy=Sxy,xcovo=xcovo,Mx=Mx,N=N,allVres=vr,covY=covY,Nqq=Nqq,Nq3=Nq3,Nq4=Nq4,fastapprox,NCORES)
+    #alt.pp <- calcAdjPP(qt=qt,STR=STR,SS=SS,tau=tau,nsnpspermodel=nsnpspermodel,kappa=kappa,PP=PP,beta=mbeta,NCORES)
     
     for(i in seq_along(alt.pp)){
  	names(alt.pp[[i]]) <- STR[[i]]
@@ -529,33 +529,34 @@ D12 <- -Nqq[T1,T2]*0.5*(log((1-r12)) - log((1-R12)))
  } 
 
 
-# ##' @title internal function for calcAdjPP for a pair of traits
-# ##' @param i model index for trait 1
-# ##' @param j model index for trait 2
-# ##' @param T1 index of trait 1
-# ##' @param T2 index of trait 2
-# ##' @param SS list consisting of lists of model configuration SNPs for each trait
-# ##' @param tau matrix of adjustment terms
-# ##' @param nsnpspermodel list of number of SNPs per model for each model in STR
-# ##' @param kappa single value of sharing parameter kappa
-# ##' @author Jenn Asimit
-# calcQ12 <- function(i,j,T1,T2,SS,tau,nsnpspermodel,kappa) {
-# # contributes to Q for 1 | 2 and 2|1
-# if(SS[[T1]][[i]][1] =="1" | SS[[T2]][[j]][1] == "1") { #at least one is null model -> tau=1 & intersection is empty
-#  kadj <- 1
-#  tij <- 1
-#  } else {
-# overlap <- 1*(any(SS[[T1]][[i]] %in% SS[[T2]][[j]]))
-# kadj <- ifelse(overlap==0,1,kappa)
-# tij <- tau[(nsnpspermodel[[T1]][i]+1),(nsnpspermodel[[T2]][j]+1)] # shift array indices by 1 since for numsnps 0 to maxnum
-# }
-# adj1 <- tij*kadj
-# #adj2 <- tij*kadj
-# return(adj1)
-# }
-# 
-# vcalcQ12 <- Vectorize(calcQ12,vectorize.args=c("i","j"),SIMPLIFY=TRUE) #last arg is so that have single element output and can apply outer
-# 
+#' @title internal function for calcAdjPP for a pair of traits
+#' @param i model index for trait 1
+#' @param j model index for trait 2
+#' @param T1 index of trait 1
+#' @param T2 index of trait 2
+#' @param SS list consisting of lists of model configuration SNPs for each trait
+#' @param tau matrix of adjustment terms
+#' @param nsnpspermodel list of number of SNPs per model for each model in STR
+#' @param kappa single value of sharing parameter kappa
+#' @author Jenn Asimit
+calcQ12 <- function(i,j,T1,T2,SS,tau,nsnpspermodel,kappa) {
+# contributes to Q for 1 | 2 and 2|1
+if(SS[[T1]][[i]][1] =="1" | SS[[T2]][[j]][1] == "1") { #at least one is null model -> tau=1 & intersection is empty
+ kadj <- 1
+ tij <- 1
+ } else {
+overlap <- 1*(any(SS[[T1]][[i]] %in% SS[[T2]][[j]]))  
+kadj <- ifelse(overlap==0,1,kappa) 
+tij <- tau[(nsnpspermodel[[T1]][i]+1),(nsnpspermodel[[T2]][j]+1)] # shift array indices by 1 since for numsnps 0 to maxnum
+}
+adj1 <- tij*kadj
+adj2 <- tij*kadj
+return(c(adj1,adj2))
+}
+
+vcalcQ12 <- Vectorize(calcQ12,vectorize.args=c("i","j"),SIMPLIFY=FALSE) #last arg is so that have single element output and can apply outer
+
+
 
 
 #' @title internal function for calcAdjPP that gives constant term for delta
@@ -581,120 +582,121 @@ Dij <- diag(M)
 
 
 
-# ##' @title Calculates trait-adjusted posterior probabilities for all traits at sharing parameter kappa
-# ##' @param qt vector of trait names
-# ##' @param STR list consisting of vectors of model configurations for each trait
-# ##' @param SS list consisting of lists of model configuration SNPs for each trait
-# ##' @param tau matrix of adjustment terms
-# ##' @param nsnpspermodel list of number of SNPs per model for each model in STR
-# ##' @param kappa single value of sharing parameter kappa
-# ##' @param PP list consisting of vectors of posterior probabilities for the model configurations for each trait
-# ##' @param beta list of joint effect estimates for models in STR; multi.beta output
-# ##' @param SSy matrix of trait cross-products
-# ##' @param Sxy matrix with each column being the cross-product between SNPs and a trait
-# ##' @param xcovo SNP covariance matrix
-# ##' @param Mx vector of SNP means
-# ##' @param N number of individuals with measurements for all traits
-# ##' @param allVres list of variance residuals
-# ##' @param covY covariance matrix of traits
-# ##' @param Nqq matrix of all pair-wise counts of number of individuals with both traits in a pair measured;
-# ##' @param Nq3  vector of counts of number of individuals with three traits measured; all triples considered; NULL if M < 4
-# ##' @param Nq4  vector of counts of number of individuals with four traits measured; all quadruples considered; NULL if M < 5
-# ##' @param fastapprox logical that is TRUE when fast approximation is used that does not include unequal sample size adjustments; default is FALSE
-# ##' @param NCORES number of cores for parallel computing; recommend NCORES=M, but if on Windows, use NCORES=1; 
-# ##' @return list of trait-adjusted posterior probabilities for each trait at sharing parameter kappa
-# ##' @author Jenn Asimit
-# calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,SSy,Sxy,xcovo,Mx,N,allVres,covY,Nqq,Nq3,Nq4,fastapprox,NCORES) {
-#  
-#     M <- length(qt)
-#     np <- choose(M,2)
-#     c2 <- combn(1:M,2,simplify=TRUE)
-#     c2names <- apply(c2,2, function(cc) return(paste0("Q",paste(cc,collapse=".Q"))))
-# 	Q <- structure(vector("list",np),names=c2names)
-# 	nummods <- sapply(STR,length)
-# 
-# 	for(i in 1:np) { # for each qt pair Q[[i]] is a matrix where Q[[i]][j,k] is a list with 
-# 					# two components adjPP12[modj for T1,modk for T2], adjPP21[modj for T1,modk for T2] where 1=c2[1,i], 2=c2[2,i]
-# 	    
-#      Q[[i]] <- outer(1:nummods[c2[1,i]],1:nummods[c2[2,i]],vcalcQ12,T1=c2[1,i],T2=c2[2,i],SS,tau,nsnpspermodel,kappa)
-#      Q[[i]] <- as.matrix(Q[[i]]) 
-# 
-# 		}
-# 	
-# 	
-# 	qns <- unlist(strsplit(names(Q),"[.]"))
-# 	PPadj <- structure(vector("list",M),names=qt)
-# 	if(M==2) { 
-# 	  i=1
-# 	  delta <- calcD12(1:nummods[c2[1,i]],1:nummods[c2[2,i]],T1=c2[1,i],T2=c2[2,i],beta=beta,SSy=SSy,Sxy=Sxy,xcovo=xcovo,Mx=Mx,Nqq=Nqq,Vres=allVres,covY=covY,nsnpspermodel)
-# #      tmp <- Q[[i]]
-# #      q12 <- apply(tmp,2,function(x) unlist(lapply(x,"[[",1)))  #q12=q21
-# #  	  q21 <- apply(tmp,2,function(x) unlist(lapply(x,"[[",2)))  	    
-#  	  
-#  	  # need sum(delta*PP) = 1
-#  	  pd1 <- delta + matrix(log(PP[[2]]),nrow=nummods[1],ncol=nummods[2],byrow=TRUE)
-#  	  pd1 <- t(apply(pd1,1,function(x) x-logsum(x)))
-# # 	  q1 <- log(q12)+pd1; q1 <- apply(q1,1,logsum); q1 <- exp(q1-logsum(q1))
-# 	  q1 <- log(Q[[i]])+pd1; q1 <- apply(q1,1,logsum); q1 <- exp(q1-logsum(q1))
-#  	  
-#  	  pd2 <- t(delta) + matrix(log(PP[[1]]),nrow=nummods[2],ncol=nummods[1],byrow=TRUE)
-#  	  pd2 <- t(apply(pd2,1,function(x) x-logsum(x)))
-# # 	  q2 <- t(log(q21))+pd2; q2 <- apply(q2,1,logsum); q2 <- exp(q2-logsum(q2))
-#  	  q2 <- t(log(Q[[i]]))+pd2; q2 <- apply(q2,1,logsum); q2 <- exp(q2-logsum(q2))
-#  	
-# 	  PPadj[[1]] <- PP[[1]]*q1/sum(PP[[1]]*q1)
-# 	  PPadj[[2]] <- PP[[2]]*q2/sum(PP[[2]]*q2)
-# 	  
-# 	} else {
-# 		Dcon <- calcDcon(covY,Nqq) 
-# 		Cij <- allC12(M,nummods,beta,SSy,Sxy,xcovo,Mx,Nqq)
-# 		lPP <- lapply(PP,log)
-# 		
-# 		PPadj <- vector("list",M)
-# 		ivec <- vector("list",M)
-# 		for(i in 1:M) ivec[[i]] <- i
-# 		PPadj <- parallel::mclapply(ivec,PPadjOne,qns,Q,STR,covY,Nqq,N,nummods,allVres,Cij,Dcon,lPP,M, Nq3, Nq4, fastapprox,mc.cores =NCORES)	
-# 		names(PPadj) <- qt	
-#      	}
-# 	return(PPadj) 
-# 	 
-# }
+
+#' @title Calculates trait-adjusted posterior probabilities for all traits at sharing parameter kappa
+#' @param qt vector of trait names
+#' @param STR list consisting of vectors of model configurations for each trait
+#' @param SS list consisting of lists of model configuration SNPs for each trait
+#' @param tau matrix of adjustment terms
+#' @param nsnpspermodel list of number of SNPs per model for each model in STR
+#' @param kappa single value of sharing parameter kappa
+#' @param PP list consisting of vectors of posterior probabilities for the model configurations for each trait
+#' @param beta list of joint effect estimates for models in STR; multi.beta output
+#' @param SSy matrix of trait cross-products
+#' @param Sxy matrix with each column being the cross-product between SNPs and a trait
+#' @param xcovo SNP covariance matrix
+#' @param Mx vector of SNP means
+#' @param N number of individuals with measurements for all traits
+#' @param allVres list of variance residuals
+#' @param covY covariance matrix of traits
+#' @param Nqq matrix of all pair-wise counts of number of individuals with both traits in a pair measured;
+#' @param Nq3  vector of counts of number of individuals with three traits measured; all triples considered; NULL if M < 4
+#' @param Nq4  vector of counts of number of individuals with four traits measured; all quadruples considered; NULL if M < 5
+#' @param fastapprox logical that is TRUE when fast approximation is used that does not include unequal sample size adjustments; default is FALSE
+#' @param NCORES number of cores for parallel computing; recommend NCORES=M, but if on Windows, use NCORES=1; 
+#' @return list of trait-adjusted posterior probabilities for each trait at sharing parameter kappa
+#' @author Jenn Asimit
+calcAdjPP <- function(qt,STR,SS,tau,nsnpspermodel,kappa,PP,beta,SSy,Sxy,xcovo,Mx,N,allVres,covY,Nqq,Nq3,Nq4,fastapprox,NCORES) {
+ 
+    M <- length(qt)
+    np <- choose(M,2)
+    c2 <- combn(1:M,2,simplify=TRUE)
+    c2names <- apply(c2,2, function(cc) return(paste0("Q",paste(cc,collapse=".Q"))))
+	Q <- structure(vector("list",np),names=c2names)
+	nummods <- sapply(STR,length)
+
+	for(i in 1:np) { # for each qt pair Q[[i]] is a matrix where Q[[i]][j,k] is a list with 
+					# two components adjPP12[modj for T1,modk for T2], adjPP21[modj for T1,modk for T2] where 1=c2[1,i], 2=c2[2,i]
+	    
+     Q[[i]] <- outer(1:nummods[c2[1,i]],1:nummods[c2[2,i]],vcalcQ12,T1=c2[1,i],T2=c2[2,i],SS,tau,nsnpspermodel,kappa)
+      
+
+		}
+	
+	
+	qns <- unlist(strsplit(names(Q),"[.]"))
+	PPadj <- structure(vector("list",M),names=qt)
+	if(M==2) { 
+	  i=1
+	  delta <- calcD12(1:nummods[c2[1,i]],1:nummods[c2[2,i]],T1=c2[1,i],T2=c2[2,i],beta=beta,SSy=SSy,Sxy=Sxy,xcovo=xcovo,Mx=Mx,Nqq=Nqq,Vres=allVres,covY=covY,nsnpspermodel)
+      tmp <- Q[[i]]
+      q12 <- apply(tmp,2,function(x) unlist(lapply(x,"[[",1))) 
+ 	  q21 <- apply(tmp,2,function(x) unlist(lapply(x,"[[",2)))  	    
+ 	  
+ 	  # need sum(delta*PP) = 1
+ 	  pd1 <- delta + matrix(log(PP[[2]]),nrow=nummods[1],ncol=nummods[2],byrow=TRUE)
+ 	  pd1 <- t(apply(pd1,1,function(x) x-logsum(x)))
+ 	  q1 <- log(q12)+pd1; q1 <- apply(q1,1,logsum); q1 <- exp(q1-logsum(q1))
+ 	  
+ 	  pd2 <- t(delta) + matrix(log(PP[[1]]),nrow=nummods[2],ncol=nummods[1],byrow=TRUE)
+ 	  pd2 <- t(apply(pd2,1,function(x) x-logsum(x)))
+ 	  q2 <- t(log(q21))+pd2; q2 <- apply(q2,1,logsum); q2 <- exp(q2-logsum(q2))
+ 	
+	  PPadj[[1]] <- PP[[1]]*q1/sum(PP[[1]]*q1)
+	  PPadj[[2]] <- PP[[2]]*q2/sum(PP[[2]]*q2)
+	  
+	} else {
+		Dcon <- calcDcon(covY,Nqq) 
+		Cij <- allC12(M,nummods,beta,SSy,Sxy,xcovo,Mx,Nqq)
+		lPP <- lapply(PP,log)
+		
+		PPadj <- vector("list",M)
+		ivec <- vector("list",M)
+		for(i in 1:M) ivec[[i]] <- i
+		PPadj <- parallel::mclapply(ivec,PPadjOne,qns,Q,STR,covY,Nqq,N,nummods,allVres,Cij,Dcon,lPP,M, Nq3, Nq4, fastapprox,mc.cores =NCORES)	
+		names(PPadj) <- qt	
+     	}
+	return(PPadj) 
+	 
+}
 
 
 #### ppadj functions ####
 
-# pre.ppadj <- function(i,qns,Q) {
-# 	    
-# 	    qn  <- paste0("Q",i)
-# 	 	ind <- grep(qn,qns,fixed=TRUE)
-# 	 	whO <- ind[which(ind %% 2 == 1)] # odd indices so keep as is
-# 	 	whE <- ind[which(ind %% 2 == 0)] # even indices so transpose
-# 	 	keep <- NULL
-# 	 	if(length(whO)>0) {
-# 	 	  keep <- Q[(whO+1)/2]
-# 	 	  nk <- names(keep)
-# 	 	  names(keep) <- unlist(strsplit(nk,"[.]"))[c(FALSE,TRUE)] # trait wrt
-# 	 		}
-# 	 	if(length(whE)>0) {
-# #	 	 tmp <- Q[whE/2]
-# 	 	 if(!is.null(keep)) {
-# 	 	 keep2 <- Q[whE/2]
-# 	 	 nk <- names(keep2)
-# 	 	 names(keep2) <- unlist(strsplit(nk,"[.]"))[c(TRUE,FALSE)]
-# 	 	 keep2 <- lapply(keep2,t)
-# 	 	 keep <- append(keep,keep2)	# 2nd component in list pair
-# 	 	 				} else {
-# 	 	 				keep <- Q[whE/2]
-# 	 	 				nk <- names(keep)
-# 	 	 				names(keep) <- unlist(strsplit(nk,"[.]"))[c(TRUE,FALSE)]
-# 	 	 				keep <- lapply(keep,t)
-# 	 	 				}
-# 	 	} 
-# 	 	keep <- keep[sort(names(keep),decreasing=FALSE)]
-# 	 	keep <- lapply(keep,log)
-# 	 	keep <- lapply(keep,as.matrix)
-# 	 	return(keep)
-# 	 	}
+pre.ppadj <- function(i,qns,Q) {
+	    
+	    qn  <- paste0("Q",i)
+	 	ind <- grep(qn,qns,fixed=TRUE)
+	 	whO <- ind[which(ind %% 2 == 1)] # odd indices so first list component 	 
+	 	whE <- ind[which(ind %% 2 == 0)]
+	 	keep <- NULL
+	 	if(length(whO)>0) {
+	 	  tmp <- Q[(whO+1)/2]
+	 	  keep <- lapply(tmp,function(x) apply(x,2,function(y) unlist(lapply(y,"[[",1))) )
+	 	  nk <- names(keep)
+	 	  names(keep) <- unlist(strsplit(nk,"[.]"))[c(FALSE,TRUE)]
+	 		}
+	 	if(length(whE)>0) {
+	 	 tmp <- Q[whE/2]
+	 	 if(!is.null(keep)) {
+	 	 keep2 <- lapply(tmp,function(x) apply(x,2,function(y) unlist(lapply(y,"[[",2))) )
+	 	 nk <- names(keep2)
+	 	 names(keep2) <- unlist(strsplit(nk,"[.]"))[c(TRUE,FALSE)]
+	 	 keep2 <- lapply(keep2,t)
+	 	 keep <- append(keep,keep2)	# 2nd component in list pair
+	 	 				} else {
+	 	 				keep <- lapply(tmp,function(x) apply(x,2,function(y) unlist(lapply(y,"[[",1))) )
+	 	 				nk <- names(keep)
+	 	 				names(keep) <- unlist(strsplit(nk,"[.]"))[c(TRUE,FALSE)]
+	 	 				keep <- lapply(keep,t)
+	 	 				}
+	 	} # row k of keep corresponds to model k of trait i
+	 	# qp  PP adjustment for trait i, sum over all models to get weighted PP wrt to trait i and multiplying by D for each model 
+	 	keep <- keep[sort(names(keep),decreasing=FALSE)]
+	 	keep <- lapply(keep,log)
+	 	keep <- lapply(keep,as.matrix)
+	 	return(keep)
+	 	}
 
 
 ppadjM3 <- function(i,STR,covY,Nqq,N,nummods,allVres,Cij,Dcon,keep,lPP,M,fastapprox) {
