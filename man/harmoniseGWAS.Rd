@@ -16,7 +16,9 @@ harmoniseGWAS(
   EAfreq_colname = "EAF",
   BP_colname = "BP",
   pvalue_colname = "p_value",
-  INFO_colname = "INFO"
+  INFO_colname = "INFO",
+  N_colname = "N",
+  minNprop = 0.8
 )
 }
 \arguments{
@@ -43,6 +45,10 @@ harmoniseGWAS(
 \item{pvalue_colname}{text column name for the p-value in each obsGWAS data.frame; default "p_value"}
 
 \item{INFO_colname}{text column name for the INFO score in each obsGWAS data.frame; default "INFO"}
+
+\item{N_colname}{text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N"}
+
+\item{minNprop}{Use this for meta-analysis summary statistics - for each trait only variants with N/max(N) > minNprop are retained; default 0.80 (e.g. each variant must be measured in at least 80\% of the meta-analysis individuals)}
 }
 \value{
 outputs the list of input GWAS data such that they contain the same variants, have the same effect allele (flip where needed),

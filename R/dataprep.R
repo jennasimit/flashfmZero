@@ -12,19 +12,22 @@
 #' @param BP_colname text column name for the base-pair position in each obsGWAS data.frame; default "BP"
 #' @param pvalue_colname text column name for the p-value in each obsGWAS data.frame; default "p_value"
 #' @param INFO_colname text column name for the INFO score in each obsGWAS data.frame; default "INFO"
+#' @param N_colname text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N"
+#' @param minNprop Use this for meta-analysis summary statistics - for each trait only variants with N/max(N) > minNprop are retained; default 0.80 (e.g. each variant must be measured in at least 80% of the meta-analysis individuals)
 #' @return outputs the list of input GWAS data such that they contain the same variants, have the same effect allele (flip where needed), 
 #' and duplicates (by base-pair position) are removed, retaining the variant with highest INFO score
 #' @author Jenn Asimit
 #' @export
 harmoniseGWAS <- function(obsgwas,minMAF=0.005,minINFO=0.4,beta_colname="beta",se_colname="SE",
                        snpID_colname="rsID", EA_colname="EA", NEA_colname="NEA", 
-                       EAfreq_colname="EAF", BP_colname="BP", pvalue_colname="p_value", INFO_colname="INFO") {
+                       EAfreq_colname="EAF", BP_colname="BP", pvalue_colname="p_value", INFO_colname="INFO", N_colname="N", minNprop=0.80) {
 # Example for BOLT-LMM output:  
 # ooo <- harmoniseGWAS(obsgwas,beta_colname="BETA",EAfreq_colname="A1FREQ",pvalue_colname="P_BOLT_LMM_INF",EA_colname="ALLELE1",NEA_colname="ALLELE0")
 
  P <- length(obsgwas) # number of observed gwas
  
  for(i in 1:P) {
+	obsgwas[[i]] <- as.data.frame(obsgwas[[i]])
 	obsgwas[[i]]$INFO=as.numeric(obsgwas[[i]][,INFO_colname])
 	obsgwas[[i]]$beta=as.numeric(obsgwas[[i]][,beta_colname])
 	obsgwas[[i]]$SE=as.numeric(obsgwas[[i]][,se_colname])
@@ -35,6 +38,13 @@ harmoniseGWAS <- function(obsgwas,minMAF=0.005,minINFO=0.4,beta_colname="beta",s
 	obsgwas[[i]]$NEA=as.character(obsgwas[[i]][,NEA_colname])
 	obsgwas[[i]]$EAF=as.numeric(obsgwas[[i]][,EAfreq_colname])
 	obsgwas[[i]]$rsID=as.character(obsgwas[[i]][,snpID_colname])
+	
+	if(N_colname %in% colnames(obsgwas[[i]])) { # If the N column is available in the GWAS, filter out variants that are measured in fewer than minNprop of all individuals 
+	 obsgwas[[i]]$N <- as.numeric(obsgwas[[i]][,N_colname])
+	 obsgwas[[i]]$Nprop <- obsgwas[[i]]$N/max(obsgwas[[i]]$N)
+	 indkeep <- which(obsgwas[[i]]$Nprop >= minNprop)
+	 obsgwas[[i]] <- obsgwas[[i]][indkeep,]
+	}
 	
 	indkeep <- which(obsgwas[[i]]$INFO>minINFO & obsgwas[[i]]$MAF>minMAF)
 	obsgwas[[i]] <- obsgwas[[i]][indkeep,]
@@ -101,6 +111,8 @@ return(obsgwas)
 #' @export
 alignGWAS <- function(gwas,RPinfo,details=FALSE) {
 
+ gwas <- as.data.frame(gwas)
+ RPinfo <- as.data.frame(RPinfo)
  snpkeep <- intersect(gwas$rsID,RPinfo$rsID)
  if(length(snpkeep)==0) stop("There is no overlap between the GWAS and reference panel SNP names. Check input.")
  rownames(gwas) <- gwas$rsID
