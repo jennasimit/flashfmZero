@@ -289,4 +289,3 @@ JAMexpandedCor.multi <- function(beta1, corX, raf, ybar, Vy, N, maxcv=10,r2 = 0.
     return(out)
 }
 
-

@@ -591,4 +591,3 @@ PPsummariseST <- function (ppdf, snpgroups)
     return(list(MPP = mpp, MPPg = MPPg, PP = pp, PPg = PPg))
 }
 
-

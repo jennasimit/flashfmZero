@@ -62,7 +62,7 @@
     <div id="ref-usage">
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">harmoniseGWAS</span><span class="op">(</span></span>
 <span>  <span class="va">obsgwas</span>,</span>
-<span>  minMAF <span class="op">=</span> <span class="fl">0.005</span>,</span>
+<span>  minMAF <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  minINFO <span class="op">=</span> <span class="fl">0.4</span>,</span>
 <span>  beta_colname <span class="op">=</span> <span class="st">"beta"</span>,</span>
 <span>  se_colname <span class="op">=</span> <span class="st">"SE"</span>,</span>
@@ -72,7 +72,9 @@
 <span>  EAfreq_colname <span class="op">=</span> <span class="st">"EAF"</span>,</span>
 <span>  BP_colname <span class="op">=</span> <span class="st">"BP"</span>,</span>
 <span>  pvalue_colname <span class="op">=</span> <span class="st">"p_value"</span>,</span>
-<span>  INFO_colname <span class="op">=</span> <span class="st">"INFO"</span></span>
+<span>  INFO_colname <span class="op">=</span> <span class="st">"INFO"</span>,</span>
+<span>  N_colname <span class="op">=</span> <span class="st">"N"</span>,</span>
+<span>  minNprop <span class="op">=</span> <span class="fl">0.8</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -83,7 +85,7 @@
 
 
 <dt>minMAF</dt>
-<dd><p>only variants with MAF &gt; minMAF in all GWAS are retained; default is 0.005</p></dd>
+<dd><p>only variants with MAF &gt; minMAF in all GWAS are retained; default is 0.01</p></dd>
 
 
 <dt>minINFO</dt>
@@ -124,6 +126,14 @@
 
 <dt>INFO_colname</dt>
 <dd><p>text column name for the INFO score in each obsGWAS data.frame; default "INFO"</p></dd>
+
+
+<dt>N_colname</dt>
+<dd><p>text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N". If there is no sample size column, then there will be no filtering using Nprop</p></dd>
+
+
+<dt>minNprop</dt>
+<dd><p>Use this for meta-analysis summary statistics - for each trait only variants with N/max(N) &gt; minNprop are retained; default 0.80 (e.g. each variant must be measured in at least 80% of the meta-analysis individuals)</p></dd>
 
 </dl></div>
     <div id="value">

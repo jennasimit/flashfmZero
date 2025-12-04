@@ -630,4 +630,3 @@ JAMexpandedCor2 <- function (beta1, corX, raf, ybar, Vy, N, r2 = 0.99, save.path
 
 
 
-

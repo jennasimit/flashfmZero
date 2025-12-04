@@ -408,4 +408,3 @@ groupIDs.fn <- function(snpgroups,Msnps) {
  return(G)
 }
 
-

@@ -6,7 +6,7 @@
 \usage{
 harmoniseGWAS(
   obsgwas,
-  minMAF = 0.005,
+  minMAF = 0.01,
   minINFO = 0.4,
   beta_colname = "beta",
   se_colname = "SE",
@@ -24,7 +24,7 @@ harmoniseGWAS(
 \arguments{
 \item{obsgwas}{list of GWAS data.frames with column names as specified in the other arguments}
 
-\item{minMAF}{only variants with MAF > minMAF in all GWAS are retained; default is 0.005}
+\item{minMAF}{only variants with MAF > minMAF in all GWAS are retained; default is 0.01}
 
 \item{minINFO}{only variants with INFO > 0.4 in all GWAS are retained; default is 0.4}
 
@@ -46,7 +46,7 @@ harmoniseGWAS(
 
 \item{INFO_colname}{text column name for the INFO score in each obsGWAS data.frame; default "INFO"}
 
-\item{N_colname}{text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N"}
+\item{N_colname}{text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N". If there is no sample size column, then there will be no filtering using Nprop}
 
 \item{minNprop}{Use this for meta-analysis summary statistics - for each trait only variants with N/max(N) > minNprop are retained; default 0.80 (e.g. each variant must be measured in at least 80\% of the meta-analysis individuals)}
 }

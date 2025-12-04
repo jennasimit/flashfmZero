@@ -30,8 +30,11 @@ See [Estimation of latent factors](https://jennasimit.github.io/flashfmZero/arti
 For more details, please see:
 
 F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2025). 
-Improved genetic discovery and fine-mapping resolution through multivariate latent factor analysis of high-dimensional traits. *Cell Genomics*.  [link](https://doi.org/10.1016/j.xgen.2025.100847)   
- 
+Improved genetic discovery and fine-mapping resolution through multivariate latent factor analysis of high-dimensional traits. *Cell Genomics*. Volume 5, Issue 5100847 [Link](https://doi.org/10.1016/j.xgen.2025.100847)   
+
+WJ Astle, AS Butterworth, JL Asimit. (2025). Protocol for genetic discovery and fine-mapping of multivariate latent factors from high-dimensional traits. *STAR Protocols*. 6(4):104198. [Link](https://www.sciencedirect.com/science/article/pii/S2666166725006045)
+
+
 **Estimating latent factor GWAS summary statistics from observed trait GWAS summary statistics** 
 
 We recommend removing any traits that have measurements from fewer than half of the participants in the study. Factor analysis estimates latent factors from the covariance matrix of the observed traits, but when there are many highly correlated latent factors (e.g. multiple pairs of traits with correlation > 0.99, as in the NMR data from the INTERVAL study) it is not computationally possible. In such cases, we recommend removing traits one-by-one based on the number of high-correlations that they have, as illustrated in [Estimation of latent factors](https://jennasimit.github.io/flashfmZero/articles/Example_Part1.html).

@@ -1,7 +1,7 @@
 
 #' @title Harmonise list of GWAS data to have same variants, same effect allele, and to remove duplicate snps 
 #' @param obsgwas list of GWAS data.frames with column names as specified in the other arguments
-#' @param minMAF only variants with MAF > minMAF in all GWAS are retained; default is 0.005
+#' @param minMAF only variants with MAF > minMAF in all GWAS are retained; default is 0.01
 #' @param minINFO only variants with INFO > 0.4 in all GWAS are retained; default is 0.4
 #' @param beta_colname text column name for the effect estimates in each obsGWAS data.frame; default "BETA"
 #' @param se_colname text column name for the effect estimate standard errors in each obsGWAS data.frame; default "SE"
@@ -12,13 +12,13 @@
 #' @param BP_colname text column name for the base-pair position in each obsGWAS data.frame; default "BP"
 #' @param pvalue_colname text column name for the p-value in each obsGWAS data.frame; default "p_value"
 #' @param INFO_colname text column name for the INFO score in each obsGWAS data.frame; default "INFO"
-#' @param N_colname text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N"
+#' @param N_colname text column name for the number of individuals with the variant measured in each obsGWAS data frame; default "N". If there is no sample size column, then there will be no filtering using Nprop
 #' @param minNprop Use this for meta-analysis summary statistics - for each trait only variants with N/max(N) > minNprop are retained; default 0.80 (e.g. each variant must be measured in at least 80% of the meta-analysis individuals)
 #' @return outputs the list of input GWAS data such that they contain the same variants, have the same effect allele (flip where needed), 
 #' and duplicates (by base-pair position) are removed, retaining the variant with highest INFO score
 #' @author Jenn Asimit
 #' @export
-harmoniseGWAS <- function(obsgwas,minMAF=0.005,minINFO=0.4,beta_colname="beta",se_colname="SE",
+harmoniseGWAS <- function(obsgwas,minMAF=0.01,minINFO=0.4,beta_colname="beta",se_colname="SE",
                        snpID_colname="rsID", EA_colname="EA", NEA_colname="NEA", 
                        EAfreq_colname="EAF", BP_colname="BP", pvalue_colname="p_value", INFO_colname="INFO", N_colname="N", minNprop=0.80) {
 # Example for BOLT-LMM output:  

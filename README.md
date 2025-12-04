@@ -8,30 +8,53 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13305579.svg)](https://doi.org/10.5281/zenodo.13305579)
 <!-- badges: end -->
 
-FlashfmZero is a computationally efficient approach to **jointly
-fine-map signals in any number of uncorrelated quantitative traits**
-(i.e. zero correlation), as may result from latent traits estimated from
-factor analysis using a varimax rotation. For correlated traits, the
-original [flashfm](https://www.nature.com/articles/s41467-021-26364-y)
+FlashfmZero is a computationally efficient approach for **jointly
+fine-mapping signals in uncorrelated traits**, including latent traits
+estimated from factor analysis (e.g. using a varimax rotation).
+
+For correlated traits, the original
+[flashfm](https://www.nature.com/articles/s41467-021-26364-y)
 multi-trait fine-mapping method should be used and cited, which is
-available in this package for convenience. Flashfm and flashfmZero
-output trait-specific results,leveraging information between traits; for
-each trait, credible sets, SNP marginal posterior probabilities of
-causality (MPP), and multi-SNP model posterior probabilities (PP) are
-output.
+available in this package for convenience.
 
-We also provide an approach to **estimate latent factor GWAS summary
-statistics using only summary level data** - observed trait GWAS summary
-statistics, observed trait covariance matrix.
+Both flashfm and flashfmZero output:
 
-For more details, please see:
+- Trait-specific credible sets  
+- SNP marginal posterior probabilities of causality (MPP) for each trait
+- Posterior probabilities for multi-SNP models (PP) for each trait
+
+Additionally, flashfmZero provides an approach to **estimate latent
+factor GWAS summary statistics** using only summary-level data:
+
+- Observed trait GWAS summary statistics  
+- Observed trait covariance matrix
+
+## Key Publications
+
+#### Featured Paper
 
 F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2025). Improved genetic
 discovery and fine-mapping resolution through multivariate latent factor
-analysis of high-dimensional traits. *Cell Genomics*.
-[link](https://doi.org/10.1016/j.xgen.2025.100847)
+analysis of high-dimensional traits. *Cell Genomics*. Volume 5, Issue
+5100847 [Link](https://doi.org/10.1016/j.xgen.2025.100847)
 
-Website available at: <https://jennasimit.github.io/flashfmZero/>
+#### Protocol Paper
+
+WJ Astle, AS Butterworth, JL Asimit. (2025). Protocol for genetic
+discovery and fine-mapping of multivariate latent factors from
+high-dimensional traits. *STAR Protocols*. 6(4):104198.
+[Link](https://www.sciencedirect.com/science/article/pii/S2666166725006045)
+
+#### Documentation & Tutorials
+
+<https://jennasimit.github.io/flashfmZero/>
+
+### Associated Data & Code
+
+- Protocol code and example summary-level data:
+  <https://github.com/jennasimit/flashfmZero-example-data>
+- INTERVAL study analysis script:
+  <https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis>
 
 Example annotated scripts that only use observed trait summary-level
 data in our analysis of the INTERVAL study’s NMR metabolic traits

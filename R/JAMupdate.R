@@ -218,4 +218,3 @@ FLASHFMwithJAMhat <- function (beta1, corX, raf, ybar, N, maxcv=10, save.path, T
     return(list(mpp.pp = mpp.pp, snpGroups = snpGroups))
 }
 
-

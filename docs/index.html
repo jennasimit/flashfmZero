@@ -84,14 +84,53 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>FlashfmZero is a computationally efficient approach to <strong>jointly fine-map signals in any number of uncorrelated quantitative traits</strong> (i.e. zero correlation), as may result from latent traits estimated from factor analysis using a varimax rotation. For correlated traits, the original <a href="https://www.nature.com/articles/s41467-021-26364-y" class="external-link">flashfm</a> multi-trait fine-mapping method should be used and cited, which is available in this package for convenience. Flashfm and flashfmZero output trait-specific results,leveraging information between traits; for each trait, credible sets, SNP marginal posterior probabilities of causality (MPP), and multi-SNP model posterior probabilities (PP) are output.</p>
-<p>We also provide an approach to <strong>estimate latent factor GWAS summary statistics using only summary level data</strong> - observed trait GWAS summary statistics, observed trait covariance matrix.</p>
-<p>For more details, please see:</p>
-<p>F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2025). Improved genetic discovery and fine-mapping resolution through multivariate latent factor analysis of high-dimensional traits. <em>Cell Genomics</em>. <a href="https://doi.org/10.1016/j.xgen.2025.100847" class="external-link">link</a></p>
-<p>Website available at: <a href="https://jennasimit.github.io/flashfmZero/" class="external-link uri">https://jennasimit.github.io/flashfmZero/</a></p>
+<p>FlashfmZero is a computationally efficient approach for <strong>jointly fine-mapping signals in uncorrelated traits</strong>, including latent traits estimated from factor analysis (e.g. using a varimax rotation).</p>
+<p>For correlated traits, the original <a href="https://www.nature.com/articles/s41467-021-26364-y" class="external-link">flashfm</a> multi-trait fine-mapping method should be used and cited, which is available in this package for convenience.</p>
+<p>Both flashfm and flashfmZero output:</p>
+<ul>
+<li>Trait-specific credible sets<br>
+</li>
+<li>SNP marginal posterior probabilities of causality (MPP) for each trait</li>
+<li>Posterior probabilities for multi-SNP models (PP) for each trait</li>
+</ul>
+<p>Additionally, flashfmZero provides an approach to <strong>estimate latent factor GWAS summary statistics</strong> using only summary-level data:</p>
+<ul>
+<li>Observed trait GWAS summary statistics<br>
+</li>
+<li>Observed trait covariance matrix</li>
+</ul>
+<div class="section level2">
+<h2 id="key-publications">Key Publications<a class="anchor" aria-label="anchor" href="#key-publications"></a>
+</h2>
+<div class="section level4">
+<h4 id="featured-paper">Featured Paper<a class="anchor" aria-label="anchor" href="#featured-paper"></a>
+</h4>
+<p>F Zhou, WJ Astle, AS Butterworth, JL Asimit. (2025). Improved genetic discovery and fine-mapping resolution through multivariate latent factor analysis of high-dimensional traits. <em>Cell Genomics</em>. Volume 5, Issue 5100847 <a href="https://doi.org/10.1016/j.xgen.2025.100847" class="external-link">Link</a></p>
+</div>
+<div class="section level4">
+<h4 id="protocol-paper">Protocol Paper<a class="anchor" aria-label="anchor" href="#protocol-paper"></a>
+</h4>
+<p>WJ Astle, AS Butterworth, JL Asimit. (2025). Protocol for genetic discovery and fine-mapping of multivariate latent factors from high-dimensional traits. <em>STAR Protocols</em>. 6(4):104198. <a href="https://www.sciencedirect.com/science/article/pii/S2666166725006045" class="external-link">Link</a></p>
+</div>
+<div class="section level4">
+<h4 id="documentation--tutorials">Documentation &amp; Tutorials<a class="anchor" aria-label="anchor" href="#documentation--tutorials"></a>
+</h4>
+<p><a href="https://jennasimit.github.io/flashfmZero/" class="external-link uri">https://jennasimit.github.io/flashfmZero/</a></p>
+</div>
+<div class="section level3">
+<h3 id="associated-data--code">Associated Data &amp; Code<a class="anchor" aria-label="anchor" href="#associated-data--code"></a>
+</h3>
+<ul>
+<li>Protocol code and example summary-level data: <a href="https://github.com/jennasimit/flashfmZero-example-data" class="external-link uri">https://github.com/jennasimit/flashfmZero-example-data</a>
+</li>
+<li>INTERVAL study analysis script: <a href="https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis" class="external-link uri">https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis</a>
+</li>
+</ul>
 <p>Example annotated scripts that only use observed trait summary-level data in our analysis of the INTERVAL study’s NMR metabolic traits (<a href="https://www.nature.com/articles/s41586-024-07148-y" class="external-link">Karjalainen et al. 2024</a>) are available on the flashfmZero website in the article tabs. These scripts (with minor modifications) were also used in our analysis of 99 blood cell traits from the INTERVAL study (<a href="https://doi.org/10.1016/j.cell.2016.10.042" class="external-link">Astle et al. 2016</a>, <a href="https://doi.org/10.1038/s41467-023-40679-y" class="external-link">Akbari et al. 2023</a>).</p>
 <p>See <a href="https://jennasimit.github.io/flashfmZero/articles/Example_Part1.html" class="external-link">Estimation of latent factors</a> and <a href="https://jennasimit.github.io/flashfmZero/articles/Example_Part2.html" class="external-link">Latent factor GWAS and fine-mapping</a> for annotated example R scripts that use summary-level data and are broadly applicable to other GWAS data.</p>
 <p>For proof of principle, we have applied these methods to GWAS results from 99 raw blood cell traits and their 25 latent factors, derived from complete individual-level data, in the <a href="https://doi.org/10.1186/1745-6215-15-363" class="external-link">INTERVAL study</a>. These analysis scripts are available here: <a href="https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis" class="external-link uri">https://github.com/fz-cambridge/flashfmZero-INTERVAL-analysis</a></p>
+</div>
+</div>
 <div class="section level2">
 <h2 id="system-requirements">System Requirements<a class="anchor" aria-label="anchor" href="#system-requirements"></a>
 </h2>
